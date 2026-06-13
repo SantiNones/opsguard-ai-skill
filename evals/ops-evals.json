@@ -72,7 +72,7 @@
     {
       "id": "ambiguous_policy_question",
       "input": "I have a question about my benefits.",
-      "expectedRoute": "ask_missing_info",
+      "expectedRoute": "ask_for_info",
       "expectedRiskLevel": "medium",
       "mustRequireHumanReview": true,
       "mustCiteRuleIds": [],

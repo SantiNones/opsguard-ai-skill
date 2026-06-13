@@ -92,21 +92,33 @@ evals/            # Test cases and eval suite
 
 ## Current Status
 
-**Milestone 1 Complete:** Frontend MVP with deterministic mock logic
+**Milestone 3A Complete:** Executable policy retrieval, safety rules, and eval runner
+
+- ✅ **Policy Retrieval** — Loads markdown policy files, parses rule sections (TT-01, PA-03, etc.), keyword-based relevance scoring
+- ✅ **Safety Rules** — Deterministic overrides for sensitive topics (payroll, compensation, cross-border, legal)
+- ✅ **Unified Resolver** — Orchestrates retrieval + deterministic classification + safety layer
+- ✅ **API Route** — `/api/resolve` endpoint with structured request/response
+- ✅ **Eval Runner** — `npm run eval` executes test suite with accuracy reporting
+- ✅ **UI/API Integration** — Frontend calls API with graceful fallback to local mock
+
+**Milestone 1-2 Complete:** Frontend MVP with documentation
 
 - ✅ Premium internal-tool UI
 - ✅ 4 example scenarios with mock classification
 - ✅ Risk badges and workflow visualization
 - ✅ Copy-to-clipboard for handoff
+- ✅ Product spec, architecture docs, AI Skill contract
+- ✅ 5 policy documents with stable rule IDs
+- ✅ Eval suite with 10 test cases
 
 ## Next Milestone
 
-**Milestone 2:** Real AI + Retrieval
+**Milestone 3B:** OpenAI Integration
 
 - [ ] OpenAI API integration (GPT-4 with structured outputs)
-- [ ] Policy retrieval layer (vector DB or keyword search)
-- [ ] Eval runner with pass/fail reporting
-- [ ] Confidence scoring improvements
+- [ ] Enhanced policy retrieval with vector embeddings
+- [ ] LLM-based classification with citation grounding
+- [ ] Improved confidence scoring
 - [ ] Request history and audit logging
 
 ## Live Demo
@@ -127,10 +139,82 @@ Try the example chips:
 
 ```bash
 npm install
-npm run dev
+npm run dev          # Start dev server on http://localhost:3000
+npm run eval         # Run eval suite and see accuracy report
+npm run build        # Production build
+npm run lint         # ESLint check
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
+
+## How It Works
+
+### Policy Retrieval (Deterministic)
+
+The system loads markdown policy files from `/policies/` and parses them into searchable chunks:
+
+```
+Request: "I forgot to clock in yesterday"
+         ↓
+Retrieved Chunks:
+  - TT-01: Missed Clock-Ins
+  - TT-02: Manager Approval Required
+  - TT-03: Overtime Corrections
+         ↓
+Resolver: Classifies as medium risk, draft_action route
+         ↓
+Safety Rules: Applies overrides if needed
+         ↓
+Output: Structured decision with citations
+```
+
+**Scoring method:** Keyword overlap with policy type bonuses (TT, PA, VL, RW, ON)
+
+**Future:** Will be replaced with vector similarity search (Chroma/Pinecone)
+
+### Safety Rules
+
+Deterministic overrides prevent unsafe routing:
+
+| Trigger | Action |
+|---------|--------|
+| Payroll keywords | Risk → medium/high, must escalate if action requested |
+| Compensation keywords | Must escalate, never answer directly |
+| Cross-border work | Risk → high, must escalate |
+| Missing citations | Route → ask_for_info |
+| Time + overtime | Risk → medium, route → draft_action |
+
+### Eval Runner
+
+```bash
+npm run eval
+```
+
+Runs 10 test cases and reports:
+- Route accuracy (%)
+- Risk classification accuracy (%)
+- Human review safety (%)
+- Citation recall (%)
+- Average latency (ms)
+- Per-case detailed results
+
+### Architecture Ready for OpenAI
+
+The resolver is designed to easily swap in an LLM:
+
+```typescript
+// Current: Deterministic
+const baseOutput = generateDeterministicOutput(request, chunks);
+
+// Future: OpenAI with structured outputs
+const baseOutput = await openai.chat.completions.create({
+  model: 'gpt-4',
+  response_format: { type: 'json_object' },
+  // ... prompt with retrieved chunks
+});
+```
+
+Safety rules remain as a guardrail layer regardless of classification method.
 
 ## License
 
