@@ -9,6 +9,10 @@
  * To run with AI mode: USE_AI=true npm run eval
  */
 
+// Load .env.local for API keys
+import * as dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+
 import { resolveOpsRequest } from '../lib/resolveOpsRequest';
 import { RiskLevel, Route } from '../lib/types';
 import * as fs from 'fs';
