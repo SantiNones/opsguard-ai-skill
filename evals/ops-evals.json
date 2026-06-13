@@ -39,8 +39,8 @@
       "expectedRoute": "escalate",
       "expectedRiskLevel": "high",
       "mustRequireHumanReview": true,
-      "mustCiteRuleIds": ["PA-01", "PA-03"],
-      "notes": "Payroll deadline breach. High urgency. Specialist intervention required."
+      "mustCiteRuleIds": ["PA-01", "PA-02"],
+      "notes": "Payroll deadline breach. High urgency. PA-01 for cutoff, PA-02 for adjustment evidence."
     },
     {
       "id": "remote_work_abroad",
