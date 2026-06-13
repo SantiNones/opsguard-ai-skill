@@ -4,12 +4,19 @@
  * 
  * Runs evaluation cases against the resolveOpsRequest function
  * and generates a terminal report with pass/fail metrics.
+ * 
+ * By default, evals run in deterministic mode to avoid OpenAI costs.
+ * To run with AI mode: USE_AI=true npm run eval
  */
 
 import { resolveOpsRequest } from '../lib/resolveOpsRequest';
 import { RiskLevel, Route } from '../lib/types';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// Detect eval mode
+const useAI = process.env.USE_AI === 'true';
+const evalMode = useAI ? 'AI' : 'Deterministic';
 
 // ANSI color codes for terminal output
 const colors = {
@@ -46,6 +53,8 @@ interface EvalResult {
   missingCitations: string[];
   extraCitations: string[];
   processingTimeMs: number;
+  mode: 'ai' | 'fallback';
+  fallbackReason?: string;
   errors: string[];
 }
 
@@ -131,6 +140,8 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
       missingCitations,
       extraCitations,
       processingTimeMs: result.processingTimeMs,
+      mode: result.mode,
+      fallbackReason: result.fallbackReason,
       errors,
     };
     
@@ -151,6 +162,8 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
       missingCitations: testCase.mustCiteRuleIds,
       extraCitations: [],
       processingTimeMs: 0,
+      mode: 'fallback',
+      fallbackReason: errorMessage,
       errors,
     };
   }
@@ -176,7 +189,12 @@ function generateReport(results: EvalResult[], cases: EvalCase[]): number {
   // Print header
   console.log('\n' + '='.repeat(70));
   console.log(`${colors.bright}${colors.cyan}OpsGuard Eval Runner${colors.reset}`);
-  console.log(`${colors.dim}Version: 0.2.0 | Deterministic Policy + Safety Layer${colors.reset}`);
+  console.log(`${colors.dim}Version: 0.3.0 | Mode: ${evalMode}${colors.reset}`);
+  if (useAI) {
+    console.log(`${colors.yellow}⚠ Running in AI mode (costs apply)${colors.reset}`);
+  } else {
+    console.log(`${colors.green}✓ Running in deterministic mode (no costs)${colors.reset}`);
+  }
   console.log('='.repeat(70) + '\n');
   
   // Print summary
@@ -205,6 +223,14 @@ function generateReport(results: EvalResult[], cases: EvalCase[]): number {
   console.log(`Risk Accuracy:   ${riskColor}${(riskAccuracy * 100).toFixed(0)}%${colors.reset} (${results.filter(r => r.riskMatch).length}/${total})`);
   console.log(`Review Safety:   ${reviewColor}${(reviewAccuracy * 100).toFixed(0)}%${colors.reset} (${results.filter(r => r.reviewMatch).length}/${total})`);
   console.log(`Citation Recall: ${citationColor}${(citationAccuracy * 100).toFixed(0)}%${colors.reset} (${results.filter(r => r.citationsMatch).length}/${total})`);
+  
+  // Fallback stats (only relevant in AI mode)
+  if (useAI) {
+    const fallbackCount = results.filter(r => r.mode === 'fallback').length;
+    const fallbackRate = fallbackCount / total;
+    const fallbackColor = fallbackRate > 0.3 ? colors.yellow : colors.green;
+    console.log(`Fallback Rate:   ${fallbackColor}${(fallbackRate * 100).toFixed(0)}%${colors.reset} (${fallbackCount}/${total})`);
+  }
   console.log();
   
   // Print individual results
@@ -236,6 +262,11 @@ function generateReport(results: EvalResult[], cases: EvalCase[]): number {
     }
     
     console.log(`  Latency: ${result.processingTimeMs}ms`);
+    
+    if (useAI) {
+      const modeColor = result.mode === 'ai' ? colors.green : colors.yellow;
+      console.log(`  Mode:   ${modeColor}${result.mode}${colors.reset}${result.fallbackReason ? ` (${result.fallbackReason})` : ''}`);
+    }
     
     if (result.errors.length > 0) {
       console.log(`  ${colors.red}Errors:${colors.reset}`);

@@ -1,22 +1,25 @@
 import { ResolveOpsRequestOutput, Citation } from './types';
 import { retrievePolicyChunks, PolicyChunk, findRuleById } from './policyRetrieval';
 import { applySafetyRules, quickSafetyCheck } from './safetyRules';
+import { aiResolve, isAIEnabled } from './aiResolve';
 
 export interface ResolveResult {
   output: ResolveOpsRequestOutput;
   retrievedChunks: PolicyChunk[];
   processingTimeMs: number;
   safetyOverridesApplied: boolean;
+  mode: 'ai' | 'fallback';
+  fallbackReason?: string;
 }
 
 /**
  * Main resolver function that orchestrates:
  * 1. Policy retrieval
- * 2. Deterministic classification
+ * 2. AI classification (if enabled) with deterministic fallback
  * 3. Safety rule application
  * 
- * This is currently deterministic but structured to easily add
- * an OpenAI resolver layer in the next milestone.
+ * AI mode is used when USE_AI=true and OPENAI_API_KEY is set.
+ * Falls back to deterministic resolver on any AI failure.
  */
 export async function resolveOpsRequest(
   userRequest: string
@@ -26,16 +29,59 @@ export async function resolveOpsRequest(
   // Quick safety check
   const safetyCheck = quickSafetyCheck(userRequest);
   if (!safetyCheck.allowed) {
-    return createBlockedResponse(userRequest, safetyCheck.reason!, startTime);
+    const result = createBlockedResponse(userRequest, safetyCheck.reason!, startTime);
+    return { ...result, mode: 'fallback', fallbackReason: 'Safety check failed' };
   }
 
   // Step 1: Retrieve relevant policy chunks
-  const retrievedChunks = retrievePolicyChunks(userRequest, 3);
+  const retrievedChunks = retrievePolicyChunks(userRequest, 5);
 
-  // Step 2: Generate deterministic output
-  const baseOutput = generateDeterministicOutput(userRequest, retrievedChunks);
+  // Step 2: Try AI resolver if enabled
+  let baseOutput: ResolveOpsRequestOutput;
+  let mode: 'ai' | 'fallback' = 'fallback';
+  let fallbackReason: string | undefined;
 
-  // Step 3: Apply safety rules
+  if (isAIEnabled()) {
+    const aiResult = await aiResolve(userRequest, retrievedChunks);
+    
+    if (aiResult.success) {
+      // Validate AI output safety
+      const aiOutput = aiResult.output;
+      
+      // Check citations are valid
+      const allowedRuleIds = retrievedChunks.map(c => c.ruleId);
+      const hasInvalidCitations = aiOutput.citations.some(
+        c => !allowedRuleIds.includes(c.code)
+      );
+      
+      // Check for safety violations (AI trying to auto-approve sensitive actions)
+      const isUnsafeRoute = 
+        aiOutput.route === 'answer_directly' && 
+        (userRequest.toLowerCase().includes('payroll') ||
+         userRequest.toLowerCase().includes('compensation') ||
+         userRequest.toLowerCase().includes('salary') ||
+         userRequest.toLowerCase().includes('cross-border'));
+      
+      if (!hasInvalidCitations && !isUnsafeRoute) {
+        baseOutput = aiOutput;
+        mode = 'ai';
+      } else {
+        fallbackReason = hasInvalidCitations 
+          ? 'AI cited invalid rules' 
+          : 'AI attempted unsafe routing';
+        baseOutput = generateDeterministicOutput(userRequest, retrievedChunks);
+      }
+    } else {
+      // AI failed, use fallback
+      fallbackReason = aiResult.error;
+      baseOutput = generateDeterministicOutput(userRequest, retrievedChunks);
+    }
+  } else {
+    // AI not enabled, use deterministic
+    baseOutput = generateDeterministicOutput(userRequest, retrievedChunks);
+  }
+
+  // Step 3: Apply safety rules (always run)
   const safeOutput = applySafetyRules(baseOutput, retrievedChunks);
   const safetyOverridesApplied = JSON.stringify(baseOutput) !== JSON.stringify(safeOutput);
 
@@ -46,6 +92,8 @@ export async function resolveOpsRequest(
     retrievedChunks,
     processingTimeMs,
     safetyOverridesApplied,
+    mode,
+    fallbackReason,
   };
 }
 
@@ -82,6 +130,8 @@ function createBlockedResponse(
     retrievedChunks: [],
     processingTimeMs,
     safetyOverridesApplied: true,
+    mode: 'fallback',
+    fallbackReason: reason,
   };
 }
 

@@ -92,6 +92,20 @@ evals/            # Test cases and eval suite
 
 ## Current Status
 
+**Milestone 3B Complete:** OpenAI structured resolver with deterministic fallback
+
+- ✅ **OpenAI Integration** — GPT-4o-mini with structured JSON outputs
+- ✅ **Zod Validation** — Schema validation for AI responses with citation verification
+- ✅ **Safe Fallback** — Deterministic resolver on any AI failure (invalid JSON, bad citations, unsafe routing)
+- ✅ **Cost Controls** — 
+  - Uses gpt-4o-mini by default
+  - Only calls OpenAI on "Analyze request" click
+  - Max 5 policy chunks, max 800 tokens output
+  - Deterministic evals by default (no surprise costs)
+- ✅ **Eval Runner** — 
+  - `npm run eval` → deterministic mode (free)
+  - `USE_AI=true npm run eval` → AI mode (costs apply)
+
 **Milestone 3A.1 Complete:** Deterministic eval performance optimized
 
 - ✅ **Eval Results: 100% Pass Rate**
@@ -101,9 +115,8 @@ evals/            # Test cases and eval suite
   - Citation Recall: 100%
 - ✅ **Policy Retrieval** — Loads markdown policy files, parses rule sections (TT-01, PA-03, etc.), keyword-based relevance scoring with explicit rule ID boosting
 - ✅ **Safety Rules** — Deterministic overrides for sensitive topics (payroll, compensation, cross-border, legal)
-- ✅ **Unified Resolver** — Orchestrates retrieval + deterministic classification + safety layer
+- ✅ **Unified Resolver** — Orchestrates retrieval + AI/deterministic classification + safety layer
 - ✅ **API Route** — `/api/resolve` endpoint with structured request/response
-- ✅ **Eval Runner** — `npm run eval` executes test suite with accuracy reporting
 - ✅ **UI/API Integration** — Frontend calls API with graceful fallback to local mock
 
 **Milestone 1-2 Complete:** Frontend MVP with documentation
@@ -203,23 +216,33 @@ Runs 10 test cases and reports:
 - Average latency (ms)
 - Per-case detailed results
 
-### Architecture Ready for OpenAI
+### OpenAI Integration with Safe Fallback
 
-The resolver is designed to easily swap in an LLM:
+OpsGuard uses OpenAI when `USE_AI=true` and `OPENAI_API_KEY` is set:
 
-```typescript
-// Current: Deterministic
-const baseOutput = generateDeterministicOutput(request, chunks);
-
-// Future: OpenAI with structured outputs
-const baseOutput = await openai.chat.completions.create({
-  model: 'gpt-4',
-  response_format: { type: 'json_object' },
-  // ... prompt with retrieved chunks
-});
+```bash
+# .env.local
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+USE_AI=true
 ```
 
-Safety rules remain as a guardrail layer regardless of classification method.
+**Fallback Triggers:**
+- AI returns invalid JSON
+- AI cites rules not in retrieved chunks (hallucination)
+- AI attempts to auto-approve sensitive actions (payroll, compensation, cross-border)
+- OpenAI API error or timeout
+- Schema validation fails
+
+```
+Request → Policy Retrieval → Try AI → [Valid?] → Apply Safety → Output
+                              ↓
+                        [Invalid/Unsafe]
+                              ↓
+                    Fallback to Deterministic
+```
+
+This ensures HR Operations workflows degrade safely.
 
 ## License
 

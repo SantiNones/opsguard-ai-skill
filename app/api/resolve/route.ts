@@ -12,6 +12,8 @@ export interface ResolveResponse {
     output: ResolveOpsRequestOutput;
     processingTimeMs: number;
     safetyOverridesApplied: boolean;
+    mode: 'ai' | 'fallback';
+    fallbackReason?: string;
   };
   error?: string;
   message?: string;
@@ -85,6 +87,8 @@ export async function POST(
           output: result.output,
           processingTimeMs: result.processingTimeMs,
           safetyOverridesApplied: result.safetyOverridesApplied,
+          mode: result.mode,
+          fallbackReason: result.fallbackReason,
         },
       },
       { status: 200 }
@@ -129,6 +133,8 @@ export async function GET(): Promise<NextResponse> {
               output: 'ResolveOpsRequestOutput',
               processingTimeMs: 'number',
               safetyOverridesApplied: 'boolean',
+              mode: 'ai | fallback',
+              fallbackReason: 'string (optional)',
             },
           },
         },
