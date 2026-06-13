@@ -1,0 +1,116 @@
+{
+  "metadata": {
+    "version": "0.1.0",
+    "description": "Eval cases for resolve_ops_request skill",
+    "created": "2026-06-13",
+    "owner": "AI Product Engineering"
+  },
+  "cases": [
+    {
+      "id": "vacation_carryover",
+      "input": "I have 5 unused vacation days from last year. Can I carry them over to next year?",
+      "expectedRoute": "answer_directly",
+      "expectedRiskLevel": "low",
+      "mustRequireHumanReview": false,
+      "mustCiteRuleIds": ["VL-01"],
+      "notes": "Standard vacation carryover query. Clear policy exists. No risk."
+    },
+    {
+      "id": "missed_clock_in",
+      "input": "I forgot to clock in yesterday. How do I fix this?",
+      "expectedRoute": "draft_action",
+      "expectedRiskLevel": "medium",
+      "mustRequireHumanReview": true,
+      "mustCiteRuleIds": ["TT-01", "TT-02"],
+      "notes": "Time correction requires manager approval. Audit trail needed."
+    },
+    {
+      "id": "missed_clock_in_overtime",
+      "input": "I forgot to clock in yesterday and worked 2 hours overtime. How do I report this?",
+      "expectedRoute": "draft_action",
+      "expectedRiskLevel": "medium",
+      "mustRequireHumanReview": true,
+      "mustCiteRuleIds": ["TT-01", "TT-02", "TT-03"],
+      "notes": "Time correction + overtime. Requires manager AND payroll review."
+    },
+    {
+      "id": "payroll_after_cutoff",
+      "input": "I need to adjust my bank account for this month's payroll. The cutoff is tomorrow.",
+      "expectedRoute": "escalate",
+      "expectedRiskLevel": "high",
+      "mustRequireHumanReview": true,
+      "mustCiteRuleIds": ["PA-01", "PA-03"],
+      "notes": "Payroll deadline breach. High urgency. Specialist intervention required."
+    },
+    {
+      "id": "remote_work_abroad",
+      "input": "I want to work remotely from Portugal for 3 weeks next month. Is this allowed?",
+      "expectedRoute": "escalate",
+      "expectedRiskLevel": "high",
+      "mustRequireHumanReview": true,
+      "mustCiteRuleIds": ["RW-02", "PA-03"],
+      "notes": "Cross-border work triggers tax and compliance review. Legal + HRBP required."
+    },
+    {
+      "id": "onboarding_checklist",
+      "input": "I'm starting next Monday. What do I need to do before my first day?",
+      "expectedRoute": "answer_directly",
+      "expectedRiskLevel": "low",
+      "mustRequireHumanReview": false,
+      "mustCiteRuleIds": ["ON-01"],
+      "notes": "Onboarding information request. Standard guidance. No risk."
+    },
+    {
+      "id": "compensation_change",
+      "input": "I think my salary should be higher based on my performance. Can we adjust it?",
+      "expectedRoute": "escalate",
+      "expectedRiskLevel": "high",
+      "mustRequireHumanReview": true,
+      "mustCiteRuleIds": [],
+      "notes": "Compensation changes always require HR Director approval. High stakes."
+    },
+    {
+      "id": "ambiguous_policy_question",
+      "input": "I have a question about my benefits.",
+      "expectedRoute": "ask_missing_info",
+      "expectedRiskLevel": "medium",
+      "mustRequireHumanReview": true,
+      "mustCiteRuleIds": [],
+      "notes": "Too vague. Need to know which benefit, what the issue is, employee ID."
+    },
+    {
+      "id": "vacation_balance_inquiry",
+      "input": "How many vacation days do I have left?",
+      "expectedRoute": "answer_directly",
+      "expectedRiskLevel": "low",
+      "mustRequireHumanReview": false,
+      "mustCiteRuleIds": ["VL-03"],
+      "notes": "Simple balance inquiry. Can be answered from system data."
+    },
+    {
+      "id": "emergency_cross_border",
+      "input": "I'm stuck in Mexico due to a cancelled flight. Can I work from here for 2 days?",
+      "expectedRoute": "escalate",
+      "expectedRiskLevel": "high",
+      "mustRequireHumanReview": true,
+      "mustCiteRuleIds": ["RW-02"],
+      "notes": "Emergency cross-border work. Requires post-hoc approval. High risk due to tax implications."
+    }
+  ],
+  "scoring": {
+    "routeWeight": 0.4,
+    "riskWeight": 0.3,
+    "reviewWeight": 0.2,
+    "citationWeight": 0.1,
+    "passThreshold": 0.85
+  },
+  "categories": {
+    "time_tracking": ["missed_clock_in", "missed_clock_in_overtime"],
+    "payroll": ["payroll_after_cutoff"],
+    "leave": ["vacation_carryover", "vacation_balance_inquiry"],
+    "remote_work": ["remote_work_abroad", "emergency_cross_border"],
+    "onboarding": ["onboarding_checklist"],
+    "compensation": ["compensation_change"],
+    "ambiguous": ["ambiguous_policy_question"]
+  }
+}
