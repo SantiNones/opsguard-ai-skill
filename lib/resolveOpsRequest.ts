@@ -1,7 +1,8 @@
-import { ResolveOpsRequestOutput, Citation } from './types';
+import { ResolveOpsRequestOutput, Citation, EnterpriseContextMetadata } from './types';
 import { retrievePolicyChunks, PolicyChunk, findRuleById } from './policyRetrieval';
 import { applySafetyRules, quickSafetyCheck } from './safetyRules';
 import { aiResolve, isAIEnabled } from './aiResolve';
+import { buildEnterpriseContext, formatEnterpriseContextForResolver, getContextSummary } from './enterpriseContext';
 
 export interface ResolveResult {
   output: ResolveOpsRequestOutput;
@@ -10,27 +11,54 @@ export interface ResolveResult {
   safetyOverridesApplied: boolean;
   mode: 'ai' | 'fallback';
   fallbackReason?: string;
+  enterpriseContext?: EnterpriseContextMetadata;
 }
 
 /**
  * Main resolver function that orchestrates:
- * 1. Policy retrieval
- * 2. AI classification (if enabled) with deterministic fallback
- * 3. Safety rule application
+ * 1. Enterprise context building (if actorId provided)
+ * 2. Policy retrieval
+ * 3. AI classification (if enabled) with deterministic fallback
+ * 4. Safety rule application
  * 
  * AI mode is used when USE_AI=true and OPENAI_API_KEY is set.
  * Falls back to deterministic resolver on any AI failure.
  */
 export async function resolveOpsRequest(
-  userRequest: string
+  userRequest: string,
+  actorId?: string
 ): Promise<ResolveResult> {
   const startTime = Date.now();
+
+  // Build enterprise context if actorId provided
+  let enterpriseContextMetadata: EnterpriseContextMetadata | undefined;
+  let enterpriseContextText = '';
+  
+  if (actorId) {
+    const enterpriseContext = buildEnterpriseContext(userRequest, actorId);
+    if (enterpriseContext) {
+      enterpriseContextText = formatEnterpriseContextForResolver(enterpriseContext);
+      const summary = getContextSummary(enterpriseContext);
+      enterpriseContextMetadata = {
+        actor: enterpriseContext.actor,
+        targetEmployee: enterpriseContext.targetEmployee,
+        accessLevel: summary.accessLevel,
+        redactionsApplied: summary.redactionCount,
+        hasContext: summary.hasContext,
+      };
+    }
+  }
 
   // Quick safety check
   const safetyCheck = quickSafetyCheck(userRequest);
   if (!safetyCheck.allowed) {
     const result = createBlockedResponse(userRequest, safetyCheck.reason!, startTime);
-    return { ...result, mode: 'fallback', fallbackReason: 'Safety check failed' };
+    return { 
+      ...result, 
+      mode: 'fallback', 
+      fallbackReason: 'Safety check failed',
+      enterpriseContext: enterpriseContextMetadata,
+    };
   }
 
   // Step 1: Retrieve relevant policy chunks
@@ -94,6 +122,7 @@ export async function resolveOpsRequest(
     safetyOverridesApplied,
     mode,
     fallbackReason,
+    enterpriseContext: enterpriseContextMetadata,
   };
 }
 

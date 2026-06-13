@@ -41,3 +41,24 @@ export interface ExampleRequest {
   label: string;
   text: string;
 }
+
+// Enterprise context metadata for resolver output
+export interface EnterpriseContextMetadata {
+  actor?: {
+    employeeId: string;
+    name: string;
+    role: string;
+    department?: string;
+    country?: string;
+  };
+  targetEmployee?: {
+    employeeId: string;
+    name: string;
+    department?: string;
+    country?: string;
+    managerId?: string | null;
+  } | null;
+  accessLevel: 'full' | 'partial' | 'minimal' | 'none';
+  redactionsApplied: number;
+  hasContext: boolean;
+}

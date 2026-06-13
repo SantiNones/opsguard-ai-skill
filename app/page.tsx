@@ -8,35 +8,53 @@ import { DecisionSummary } from '@/components/decision/DecisionSummary';
 import { WorkflowStepper } from '@/components/decision/WorkflowStepper';
 import { ActionPacket } from '@/components/action/ActionPacket';
 import { SystemDetails } from '@/components/system/SystemDetails';
+import { EnterpriseContext } from '@/components/enterprise/EnterpriseContext';
+import { PersonaSwitcher } from '@/components/enterprise/PersonaSwitcher';
 import { mockResolve, exampleRequests } from '@/lib/mockResolve';
 import { ResolveOpsRequestOutput } from '@/lib/types';
+import { employees } from '@/data/enterprise/employees';
 
 export default function Home() {
   const [request, setRequest] = useState('');
   const [output, setOutput] = useState<ResolveOpsRequestOutput | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedActorId, setSelectedActorId] = useState<string>('EMP-001'); // Default: Ana García
+  const [enterpriseContextData, setEnterpriseContextData] = useState<{
+    actor?: { employeeId: string; name: string; role: string };
+    targetEmployee?: { employeeId: string; name: string } | null;
+    accessLevel: string;
+    redactionsApplied: number;
+    hasContext: boolean;
+  } | null>(null);
 
   const handleAnalyze = async () => {
     if (!request.trim()) return;
     
     setIsAnalyzing(true);
     setError(null);
+    setEnterpriseContextData(null);
     
     try {
-      // Call the API
+      // Call the API with actor context
       const response = await fetch('/api/resolve', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userRequest: request }),
+        body: JSON.stringify({ 
+          userRequest: request,
+          actorId: selectedActorId,
+        }),
       });
 
       const result = await response.json();
 
       if (result.success && result.data) {
         setOutput(result.data.output);
+        if (result.data.enterpriseContext) {
+          setEnterpriseContextData(result.data.enterpriseContext);
+        }
       } else {
         // API error - fallback to local mock resolver
         console.warn('API failed, falling back to mock:', result.error);
@@ -89,6 +107,10 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl">
             {/* Left: Request Panel */}
             <div className="space-y-6">
+              <PersonaSwitcher
+                selectedActorId={selectedActorId}
+                onSelectActor={setSelectedActorId}
+              />
               <RequestComposer
                 value={request}
                 onChange={setRequest}
@@ -107,6 +129,7 @@ export default function Home() {
             {/* Right: Action Panel */}
             <div className="space-y-6">
               <ActionPacket output={output} />
+              <EnterpriseContext context={enterpriseContextData} />
               <SystemDetails output={output} />
             </div>
           </div>

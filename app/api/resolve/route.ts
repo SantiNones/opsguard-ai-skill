@@ -4,6 +4,7 @@ import { ResolveOpsRequestOutput } from '@/lib/types';
 
 export interface ResolveRequestBody {
   userRequest: string;
+  actorId?: string;
 }
 
 export interface ResolveResponse {
@@ -14,6 +15,20 @@ export interface ResolveResponse {
     safetyOverridesApplied: boolean;
     mode: 'ai' | 'fallback';
     fallbackReason?: string;
+    enterpriseContext?: {
+      actor?: {
+        employeeId: string;
+        name: string;
+        role: string;
+      };
+      targetEmployee?: {
+        employeeId: string;
+        name: string;
+      } | null;
+      accessLevel: string;
+      redactionsApplied: number;
+      hasContext: boolean;
+    };
   };
   error?: string;
   message?: string;
@@ -44,7 +59,7 @@ export async function POST(
     }
 
     // Validate request
-    const { userRequest } = body;
+    const { userRequest, actorId } = body;
 
     if (!userRequest || typeof userRequest !== 'string') {
       return NextResponse.json(
@@ -76,8 +91,8 @@ export async function POST(
       );
     }
 
-    // Process the request
-    const result = await resolveOpsRequest(userRequest);
+    // Process the request (with optional actor context)
+    const result = await resolveOpsRequest(userRequest, actorId);
 
     // Return successful response
     return NextResponse.json(
@@ -89,6 +104,7 @@ export async function POST(
           safetyOverridesApplied: result.safetyOverridesApplied,
           mode: result.mode,
           fallbackReason: result.fallbackReason,
+          enterpriseContext: result.enterpriseContext,
         },
       },
       { status: 200 }
@@ -135,6 +151,7 @@ export async function GET(): Promise<NextResponse> {
               safetyOverridesApplied: 'boolean',
               mode: 'ai | fallback',
               fallbackReason: 'string (optional)',
+              enterpriseContext: 'object (optional) - includes actor, targetEmployee, accessLevel',
             },
           },
         },

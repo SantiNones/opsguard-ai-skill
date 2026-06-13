@@ -208,7 +208,53 @@ export function validateOutput(output: ResolveOpsRequestOutput): ValidationResul
 }
 ```
 
-### 3.4 Eval Layer
+### 3.4 Enterprise Context Layer
+
+**Purpose:** Simulates role-based access control for HR/Payroll data
+
+**Pipeline:**
+```
+┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│    Actor    │────→│   Access     │────→│  Permissioned │────→│   Redacted   │
+│   (Who)     │     │   Control    │     │   Context     │     │   Context    │
+└─────────────┘     └──────────────┘     └──────────────┘     └──────────────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │ Target Emp   │
+                    │ (Whose data) │
+                    └──────────────┘
+```
+
+**Components:**
+- `data/enterprise/employees.ts` — Mock employee dataset (8 fictitious Spanish/European employees)
+- `data/enterprise/contracts.ts` — Employment contract data
+- `data/enterprise/payrollRecords.ts` — Payroll records (June 2026)
+- `lib/accessControl.ts` — Role-based permission logic
+- `lib/privacy/redaction.ts` — Field-level redaction utilities
+- `lib/enterpriseContext.ts` — Context builder with diagnostics
+
+**Roles:**
+| Role | Self | Direct Reports | Others |
+|------|------|----------------|--------|
+| `employee` | Full | None | None |
+| `manager` | Full | Partial (no salary/bank) | Minimal |
+| `hr_ops` | Full | Full contract | Partial (no salary) |
+| `payroll_admin` | Full | Payroll records | Full payroll access |
+
+**Redaction Strategy:**
+- Salary amounts → `[SALARY_AMOUNT_REDACTED]`
+- Bank accounts → `ES91 **** **** 0123`
+- Emails → `a***@c***.es`
+
+**Demo UI:**
+- `PersonaSwitcher` — Select actor role
+- `EnterpriseContext` — Collapsible context panel showing access level and redactions
+
+**Production Path:**
+Current mock data → HRIS API + Identity Provider + Audit logging
+
+### 3.5 Eval Layer
 
 **File:** `evals/ops-evals.json`
 
@@ -242,13 +288,19 @@ export async function runEvals(): Promise<EvalReport> {
 
 ```
 ┌─────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│  User   │───→│  Intent  │───→│ Retrieve │───→│  Risk    │───→│  Route   │
-│ Request │    │  Parse   │    │ Policies │    │  Class   │    │  Select  │
+│  User   │───→│ Enterprise│───→│ Retrieve │───→│  Risk    │───→│  Route   │
+│ Request │    │  Context │    │ Policies │    │  Class   │    │  Select  │
+│+ Actor  │    │  (RBAC)  │    │          │    │          │    │          │
 └─────────┘    └──────────┘    └──────────┘    └──────────┘    └────┬─────┘
                                                                     │
                               ┌──────────────────────────────────────┘
                               ▼
                        ┌──────────────┐
+                       │ Safety Layer │
+                       │  (Override)  │
+                       └───────┬──────┘
+                               │
+                       ┌───────▼──────┐
                        │ Review Packet │
                        │  Generation  │
                        └───────┬──────┘

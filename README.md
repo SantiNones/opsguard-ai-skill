@@ -119,6 +119,25 @@ evals/            # Test cases and eval suite
 - ✅ **API Route** — `/api/resolve` endpoint with structured request/response
 - ✅ **UI/API Integration** — Frontend calls API with graceful fallback to local mock
 
+**Milestone 4 Complete:** Enterprise Context & Access Control Simulation
+
+- ✅ **Fictitious Enterprise Dataset** — 8 Spanish/European employees, contracts, payroll records
+- ✅ **Role-Based Access Control** — Employee, Manager, HR Ops, Payroll Admin roles
+- ✅ **Permissioned Context** — Field-level access control for sensitive HR/Payroll data
+- ✅ **Redaction Layer** — Automatic masking of salary, bank accounts, sensitive fields
+- ✅ **Persona Switcher** — UI component to view as different roles
+- ✅ **Enterprise Context Panel** — Collapsible panel showing access level and redactions
+- ✅ **No Real Data** — All mock data is fictitious; no PII risk
+- 📖 See `docs/ACCESS_CONTROL.md` for full access control documentation
+
+**Access Levels by Role:**
+| Role | Self | Direct Reports | Others |
+|------|------|----------------|--------|
+| Employee | Full | None | None |
+| Manager | Full | Partial (no salary) | Minimal |
+| HR Ops | Full | Full contract | Partial |
+| Payroll Admin | Full | Payroll records | Full payroll |
+
 **Milestone 1-2 Complete:** Frontend MVP with documentation
 
 - ✅ Premium internal-tool UI
@@ -243,6 +262,41 @@ Request → Policy Retrieval → Try AI → [Valid?] → Apply Safety → Output
 ```
 
 This ensures HR Operations workflows degrade safely.
+
+### Enterprise Context and Access Control
+
+OpsGuard simulates how an enterprise HR Operations AI handles permissioned data:
+
+**Fictitious Enterprise Dataset:**
+- 8 Spanish/European employees (fictitious names, no real PII)
+- 2 Managers, 1 HR Ops, 1 Payroll Admin, 4 Employees
+- Contracts, payroll records, and org chart relationships
+
+**Role-Based Access:**
+```
+Employee:     Can see own data only
+Manager:      Can see direct reports' work status (not salary)
+HR Ops:       Can see contract details for HR cases
+Payroll Admin: Can see payroll records (salary, bank last4)
+```
+
+**Redaction Examples:**
+- `ana.garcia@company.es` → `a***@c***.es`
+- `€42,000/year` → `[SALARY_AMOUNT_REDACTED]`
+- `ES91 2345 6789 0123` → `ES91 **** **** 0123`
+
+**Demo Usage:**
+1. Select a persona in the UI (e.g., "Manager — Laura Martín")
+2. Submit a request about a direct report (e.g., "What's Carlos's vacation balance?")
+3. View the Enterprise Context panel to see:
+   - Access level granted (full/partial/minimal)
+   - Fields that were redacted
+   - Why certain data is hidden
+
+**Production Path:**
+Mock data → HRIS API (Workday/BambooHR) + Identity Provider (Okta/Azure AD) + Audit logging
+
+See `docs/ACCESS_CONTROL.md` for full documentation.
 
 ## License
 
