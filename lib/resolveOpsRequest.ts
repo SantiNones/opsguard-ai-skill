@@ -1,5 +1,5 @@
 import { ResolveOpsRequestOutput, Citation, EnterpriseContextMetadata } from './types';
-import { retrievePolicyChunks, PolicyChunk, findRuleById } from './policyRetrieval';
+import { retrieveWithDiagnostics, PolicyChunk, findRuleById, RetrievalDiagnostics } from './policyRetrieval';
 import { applySafetyRules, quickSafetyCheck } from './safetyRules';
 import { aiResolve, isAIEnabled } from './aiResolve';
 import { buildEnterpriseContext, formatEnterpriseContextForResolver, getContextSummary } from './enterpriseContext';
@@ -12,6 +12,7 @@ export interface ResolveResult {
   mode: 'ai' | 'fallback';
   fallbackReason?: string;
   enterpriseContext?: EnterpriseContextMetadata;
+  retrievalDiagnostics?: RetrievalDiagnostics;
 }
 
 /**
@@ -61,8 +62,11 @@ export async function resolveOpsRequest(
     };
   }
 
-  // Step 1: Retrieve relevant policy chunks
-  const retrievedChunks = retrievePolicyChunks(userRequest, 5);
+  // Step 1: Retrieve relevant policy chunks with diagnostics
+  const { chunks: retrievedChunks, diagnostics: retrievalDiagnostics } = retrieveWithDiagnostics(
+    userRequest,
+    { limit: 5, maxContextTokens: 1800, includeDiagnostics: true }
+  );
 
   // Step 2: Try AI resolver if enabled
   let baseOutput: ResolveOpsRequestOutput;
@@ -123,6 +127,7 @@ export async function resolveOpsRequest(
     mode,
     fallbackReason,
     enterpriseContext: enterpriseContextMetadata,
+    retrievalDiagnostics,
   };
 }
 

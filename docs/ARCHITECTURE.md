@@ -591,10 +591,103 @@ Center Column (Decision Panel)
 
 ---
 
-## 13. Changelog
+## 13. RAG Pipeline
+
+### 13.1 Pipeline Flow
+
+```
+Policy markdown files (policies/*.md)
+        ↓
+  Rule-level chunking (### XX-NN pattern)
+  + metadata: domain, sensitivity, keywords,
+    citationEligible, tokenEstimate
+        ↓
+  Deterministic hybrid scoring per query
+  [lexical | title | domain | ruleBoost | sensitivityBoost]
+        ↓
+  Rank candidates by score
+        ↓
+  Context budget filter (max 1800 tokens)
+        ↓
+  Citation-eligible chunks only
+        ↓
+  Resolver (AI or deterministic)
+  + system prompt with allowed rule IDs
+        ↓
+  Citation validation (only retrieved IDs allowed)
+        ↓
+  Safety overrides (always applied)
+        ↓
+  Dual audience response (Employee + HR)
+```
+
+### 13.2 Chunk Metadata Schema
+
+Each `PolicyChunk` contains:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `chunkId` | string | Stable ID, equals `ruleId` |
+| `chunkType` | `"policy_rule"` | Always rule-level |
+| `ruleId` | string | Stable rule ID (TT-01, etc.) |
+| `policyName` | string | Parent policy name |
+| `sourceFile` | string | Source markdown file |
+| `domain` | enum | vacation / payroll / time-tracking / remote-work / onboarding |
+| `sensitivity` | low / medium / high | Data sensitivity level |
+| `keywords` | string[] | Domain + title keywords |
+| `citationEligible` | boolean | Whether AI may cite this chunk |
+| `tokenEstimate` | number | Rough token count for budget |
+
+### 13.3 Scoring Components
+
+| Component | Description | Max contribution |
+|-----------|-------------|-----------------|
+| Lexical | Whole-word overlap between query tokens and chunk text | Unbounded |
+| Title | Whole-word matches in rule title (higher signal) | 2× per match |
+| Domain | Query keywords matching chunk's domain keyword list | 1.5 per match |
+| Rule boost | Explicit boost for known query/rule patterns | +10 |
+| Sensitivity boost | High-sensitivity chunks get extra weight for sensitive queries | +3 per sensitive term |
+
+Whole-word matching prevents false positives (e.g. "over" from "carry over" matching "overtime").
+
+### 13.4 Context Budget
+
+- Default budget: **1800 tokens** per request
+- Chunks are added in score order until budget is hit
+- Excluded chunks are surfaced in `RetrievalDiagnostics.excludedForBudget`
+- Budget leaves room for ~800 token AI output + system prompt overhead
+
+### 13.5 Separation of Concerns
+
+| Layer | Data source | Purpose |
+|-------|-------------|---------|
+| Policy retrieval | `policies/*.md` | Citation-eligible business rules for answer grounding |
+| Enterprise context | `data/enterprise/` | Permissioned structured employee/payroll data for access control |
+
+These two layers are intentionally separate: policy retrieval is about what rules apply; enterprise context is about who is asking and what data they can see.
+
+### 13.6 Retrieval Evals
+
+Location: `evals/retrieval-evals.json` (12 cases)
+Runner: `evals/run-retrieval-evals.ts`
+Command: `npm run eval:retrieval`
+
+Metrics reported:
+- **Recall@5** — fraction of expected rules retrieved (target: ≥ 90%)
+- **Precision@5** — fraction of retrieved rules that are expected
+- **MRR** — mean reciprocal rank of first expected rule
+- **Forbidden violations** — sensitive rules retrieved for wrong queries (target: 0)
+- **Avg context tokens** — budget utilization
+
+Current results: Recall@5 = 100%, MRR = 0.958, 0 forbidden violations.
+
+---
+
+## 14. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 0.1.0-mvp | June 2026 | Initial architecture for weekend MVP |
 | 0.4.0 | June 2026 | Enterprise context and access control |
 | 0.5.0 | June 2026 | Dual audience UX with employee/HR responses |
+| 0.6.0 | June 2026 | RAG quality layer: metadata, context budget, retrieval evals |

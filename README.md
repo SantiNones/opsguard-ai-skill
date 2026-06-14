@@ -92,6 +92,18 @@ evals/            # Test cases and eval suite
 
 ## Current Status
 
+**Milestone 6 Complete:** RAG Quality Layer — Rule-level chunking, context budgeting, retrieval evals
+
+- ✅ **Rich Chunk Metadata** — `chunkId`, `domain`, `sensitivity`, `keywords`, `citationEligible`, `tokenEstimate`
+- ✅ **Transparent Scoring** — 5 explicit components: lexical, title, domain, rule boost, sensitivity boost
+- ✅ **Whole-Word Matching** — Prevents false positives (e.g. "over" matching "overtime")
+- ✅ **Context Budget** — Max 1800 tokens, excludes chunks that would overflow
+- ✅ **Retrieval Diagnostics** — confidence, token usage, selected rules, budget exclusions
+- ✅ **Retrieval Diagnostics UI** — Collapsible panel in right column
+- ✅ **Citation Eligibility** — Only `citationEligible: true` chunks can be cited
+- ✅ **Retrieval Evals** — 12 cases, Recall@5 = 100%, MRR = 0.958, 0 forbidden violations
+- ✅ **`npm run eval:retrieval`** — Deterministic, no OpenAI calls
+
 **Milestone 3B Complete:** OpenAI structured resolver with deterministic fallback
 
 - ✅ **OpenAI Integration** — GPT-4o-mini with structured JSON outputs
@@ -344,6 +356,52 @@ OpsGuard provides two distinct views for HR Operations requests:
 2. **Missing Information** → Employee sees what's needed, HR gets escalation packet
 3. **Sensitive Request** → Employee gets "sent to HR review", HR gets detailed packet with draft action
 4. **Access Denied** → Employee sees "not allowed", HR sees access control audit
+
+### RAG Quality Layer
+
+OpsGuard uses **rule-level chunking** — each chunk maps to one stable policy rule ID (TT-01, VL-03, etc.), not arbitrary token windows.
+
+**Why rule-level chunks for HR policy?**
+- HR policies are operationally structured: each rule is a self-contained business rule
+- Citations must point to stable IDs for audit and explainability
+- Rule boundaries are meaningful — an employee's right to carryover vacation lives entirely in VL-01
+
+**Chunk Metadata (per rule):**
+```
+chunkId, chunkType, ruleId, policyName, title, content, excerpt
+sourceFile, domain, sensitivity (low/medium/high)
+keywords, citationEligible, tokenEstimate
+```
+
+**Scoring Strategy (5 components):**
+1. **Lexical** — whole-word overlap between query tokens and chunk text
+2. **Title** — bonus for matches in rule title (higher precision signal)
+3. **Domain** — bonus when query keywords align with chunk domain keywords
+4. **Rule boost** — explicit boost for known query/rule patterns (deterministic recall)
+5. **Sensitivity boost** — extra weight for sensitive queries matching sensitive chunks
+
+**Context Budget:**
+- Max 1800 tokens per request (leaves room for system prompt + AI output)
+- Retriever ranks by score, then excludes chunks that would exceed budget
+- Budget exclusions are surfaced in diagnostics
+
+**Citation Eligibility:**
+- Only `citationEligible: true` chunks can be cited by the AI
+- Prevents hallucinated citations — AI may only cite retrieved rule IDs
+- Existing fallback validates all citations anyway
+
+**Running Retrieval Evals:**
+```bash
+npm run eval:retrieval     # deterministic, no OpenAI
+```
+
+**Retrieval Eval Results (12 cases):**
+| Metric | Value |
+|--------|-------|
+| Recall@5 | 100% |
+| MRR | 0.958 |
+| Forbidden violations | 0 |
+| Avg context tokens | ~489 / 1800 |
 
 ## License
 

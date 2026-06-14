@@ -13,6 +13,7 @@ import { PersonaSwitcher } from '@/components/enterprise/PersonaSwitcher';
 import { EmployeeResponseComponent } from '@/components/response/EmployeeResponse';
 import { HRReviewPacketComponent } from '@/components/response/HRReviewPacket';
 import { ViewModeToggle } from '@/components/response/ViewModeToggle';
+import { RetrievalDiagnostics } from '@/components/system/RetrievalDiagnostics';
 import { mockResolve, exampleRequests } from '@/lib/mockResolve';
 import { ResolveOpsRequestOutput, EmployeeResponse, HRReviewPacket } from '@/lib/types';
 import { employees } from '@/data/enterprise/employees';
@@ -35,6 +36,14 @@ export default function Home() {
   } | null>(null);
   const [employeeResponse, setEmployeeResponse] = useState<EmployeeResponse | null>(null);
   const [hrReviewPacket, setHRReviewPacket] = useState<HRReviewPacket | null>(null);
+  const [retrievalDiagnosticsData, setRetrievalDiagnosticsData] = useState<{
+    selectedChunkCount: number;
+    estimatedContextTokens: number;
+    topRuleIds: string[];
+    retrievalConfidence: 'low' | 'medium' | 'high';
+    totalCandidateCount: number;
+    excludedForBudget: string[];
+  } | null>(null);
 
   const handleAnalyze = async () => {
     if (!request.trim()) return;
@@ -68,6 +77,9 @@ export default function Home() {
         }
         if (result.data.hrReviewPacket) {
           setHRReviewPacket(result.data.hrReviewPacket);
+        }
+        if (result.data.retrievalDiagnostics) {
+          setRetrievalDiagnosticsData(result.data.retrievalDiagnostics);
         }
       } else {
         // API error - fallback to local mock resolver
@@ -159,6 +171,7 @@ export default function Home() {
             <div className="space-y-6">
               <ActionPacket output={output} />
               <EnterpriseContext context={enterpriseContextData} />
+              <RetrievalDiagnostics diagnostics={retrievalDiagnosticsData} />
               <SystemDetails output={output} />
             </div>
           </div>

@@ -1,0 +1,98 @@
+[
+  {
+    "id": "vacation_carryover_retrieval",
+    "query": "Can I carry over my 5 unused vacation days from last year?",
+    "expectedRuleIds": ["VL-01"],
+    "forbiddenRuleIds": ["PA-01", "PA-02", "TT-03"],
+    "topK": 5,
+    "notes": "Simple carryover query — VL-01 must be the top result"
+  },
+  {
+    "id": "vacation_balance_retrieval",
+    "query": "How many vacation days do I have left this year?",
+    "expectedRuleIds": ["VL-03"],
+    "forbiddenRuleIds": ["PA-01", "TT-01"],
+    "topK": 5,
+    "notes": "Balance query — VL-03 must be retrieved"
+  },
+  {
+    "id": "missed_clock_in_retrieval",
+    "query": "I forgot to clock in yesterday. How do I fix this?",
+    "expectedRuleIds": ["TT-01", "TT-02"],
+    "forbiddenRuleIds": ["VL-01", "ON-01"],
+    "topK": 5,
+    "notes": "Clock-in correction — both TT-01 and TT-02 expected"
+  },
+  {
+    "id": "overtime_clock_in_retrieval",
+    "query": "I forgot to clock in yesterday and worked 3 hours overtime. Can this be adjusted?",
+    "expectedRuleIds": ["TT-01", "TT-02", "TT-03"],
+    "forbiddenRuleIds": ["VL-01"],
+    "topK": 5,
+    "notes": "Overtime correction — all three TT rules expected"
+  },
+  {
+    "id": "payroll_bank_account_cutoff_retrieval",
+    "query": "I need to update my bank account for this month's payroll. The cutoff is tomorrow.",
+    "expectedRuleIds": ["PA-01", "PA-02"],
+    "forbiddenRuleIds": ["VL-01", "TT-01", "ON-01"],
+    "topK": 5,
+    "notes": "Urgent bank account update — PA-01 (cutoff) and PA-02 (evidence) expected"
+  },
+  {
+    "id": "remote_work_abroad_retrieval",
+    "query": "Can I work remotely from Portugal next month?",
+    "expectedRuleIds": ["RW-02"],
+    "forbiddenRuleIds": ["VL-01", "ON-01"],
+    "topK": 5,
+    "notes": "Cross-border remote work — RW-02 required"
+  },
+  {
+    "id": "remote_work_abroad_with_payroll_retrieval",
+    "query": "I want to work from Portugal for 3 weeks. Are there payroll implications?",
+    "expectedRuleIds": ["RW-02", "PA-03"],
+    "forbiddenRuleIds": ["VL-01"],
+    "topK": 5,
+    "notes": "Cross-border + payroll angle — both RW-02 and PA-03 expected"
+  },
+  {
+    "id": "onboarding_first_day_retrieval",
+    "query": "What documents do I need before my first day?",
+    "expectedRuleIds": ["ON-01"],
+    "forbiddenRuleIds": ["PA-01", "TT-01"],
+    "topK": 5,
+    "notes": "Pre-start checklist — ON-01 must be retrieved"
+  },
+  {
+    "id": "compensation_change_retrieval",
+    "query": "I want to request a salary adjustment. What is the process?",
+    "expectedRuleIds": ["PA-02"],
+    "forbiddenRuleIds": ["VL-01", "TT-01", "ON-01"],
+    "topK": 5,
+    "notes": "Salary adjustment — PA-02 (evidence/documentation) required"
+  },
+  {
+    "id": "vacation_leave_approval_retrieval",
+    "query": "How much notice do I need to give for vacation approval?",
+    "expectedRuleIds": ["VL-02"],
+    "forbiddenRuleIds": ["PA-01", "TT-01"],
+    "topK": 5,
+    "notes": "Leave approval notice — VL-02 expected"
+  },
+  {
+    "id": "overtime_after_payroll_cutoff_retrieval",
+    "query": "I worked overtime last week but it wasn't recorded. Payroll runs tomorrow.",
+    "expectedRuleIds": ["TT-01", "PA-01"],
+    "forbiddenRuleIds": ["VL-01", "ON-01"],
+    "topK": 5,
+    "notes": "Missed overtime near payroll deadline — TT-01 and PA-01 both expected"
+  },
+  {
+    "id": "ambiguous_policy_question_retrieval",
+    "query": "I have a question about my benefits.",
+    "expectedRuleIds": [],
+    "forbiddenRuleIds": ["PA-01", "TT-01"],
+    "topK": 5,
+    "notes": "Vague query — low confidence acceptable, no specific rule required"
+  }
+]

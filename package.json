@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "eval": "tsx evals/run-evals.ts"
+    "eval": "tsx evals/run-evals.ts",
+    "eval:retrieval": "tsx evals/run-retrieval-evals.ts"
   },
   "dependencies": {
     "next": "16.2.9",

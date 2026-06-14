@@ -151,6 +151,16 @@ export async function POST(
           enterpriseContext: result.enterpriseContext,
           employeeResponse: dualResponse.employeeResponse,
           hrReviewPacket: dualResponse.hrReviewPacket,
+          retrievalDiagnostics: result.retrievalDiagnostics
+            ? {
+                selectedChunkCount: result.retrievalDiagnostics.selectedChunkCount,
+                estimatedContextTokens: result.retrievalDiagnostics.estimatedContextTokens,
+                topRuleIds: result.retrievalDiagnostics.topRuleIds,
+                retrievalConfidence: result.retrievalDiagnostics.retrievalConfidence,
+                totalCandidateCount: result.retrievalDiagnostics.totalCandidateCount,
+                excludedForBudget: result.retrievalDiagnostics.excludedForBudget,
+              }
+            : undefined,
         },
       },
       { status: 200 }
