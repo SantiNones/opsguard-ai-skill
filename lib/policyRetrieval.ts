@@ -76,7 +76,7 @@ const DOMAIN_METADATA: Record<string, {
   VL: {
     domain: 'vacation',
     sensitivity: 'low',
-    keywords: ['vacation', 'leave', 'pto', 'carryover', 'unused', 'days', 'balance', 'entitlement', 'accrual', 'request'],
+    keywords: ['vacation', 'leave', 'pto', 'carryover', 'unused', 'days', 'balance', 'entitlement', 'allowance', 'annual', 'accrual', 'request'],
   },
   RW: {
     domain: 'remote-work',
@@ -236,9 +236,9 @@ function getRuleBoost(query: string, ruleId: string): number {
     ['PA-01', q => q.includes('cutoff') || (q.includes('bank') && q.includes('payroll'))],
     ['PA-02', q => q.includes('adjustment') || q.includes('evidence') || q.includes('documentation')],
     ['PA-03', q => q.includes('cross-border') || q.includes('abroad') || q.includes('portugal') || q.includes('mexico') || q.includes('tax')],
-    ['VL-01', q => q.includes('carry') || q.includes('carryover') || q.includes('unused')],
+    ['VL-01', q => q.includes('carry') || q.includes('carryover') || q.includes('unused') || q.includes('per year') || q.includes('annual') || q.includes('entitlement') || q.includes('allowance')],
     ['VL-02', q => q.includes('approval') && q.includes('vacation')],
-    ['VL-03', q => q.includes('balance') || q.includes('how many') || q.includes('days do i have') || q.includes('days left')],
+    ['VL-03', q => q.includes('balance') || q.includes('left') || q.includes('days left') || q.includes('remaining') || q.includes('available')],
     ['RW-01', q => (q.includes('remote') && !q.includes('abroad') && !q.includes('portugal') && !q.includes('cross'))],
     ['RW-02', q => q.includes('abroad') || q.includes('portugal') || q.includes('mexico') || q.includes('cross-border') || q.includes('overseas')],
     ['ON-01', q => q.includes('first day') || q.includes('pre-start') || q.includes('before') || q.includes('starting') || q.includes('documents')],

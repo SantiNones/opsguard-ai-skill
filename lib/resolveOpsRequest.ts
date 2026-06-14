@@ -353,6 +353,26 @@ function generateDeterministicOutput(
     return createVacationCarryoverOutput(request, citations);
   }
 
+  const isVacationEntitlementQuestion =
+    (normalized.includes('vacation') || normalized.includes('leave') || normalized.includes('pto')) &&
+    (
+      normalized.includes('per year') ||
+      normalized.includes('each year') ||
+      normalized.includes('annually') ||
+      normalized.includes('annual') ||
+      normalized.includes('entitled') ||
+      normalized.includes('entitlement') ||
+      normalized.includes('allowance')
+    ) &&
+    !normalized.includes('balance') &&
+    !normalized.includes('left') &&
+    !normalized.includes('remaining') &&
+    !normalized.includes('available');
+
+  if (isVacationEntitlementQuestion) {
+    return createVacationEntitlementOutput(request, citations);
+  }
+
   if (normalized.includes('clock') || (normalized.includes('overtime') && normalized.includes('forget'))) {
     return createTimeCorrectionOutput(request, citations, retrievedChunks);
   }
@@ -423,6 +443,35 @@ function createVacationCarryoverOutput(
     reviewPacket: {
       summary: 'Employee inquiry about vacation carryover policy.',
       recommendedAction: 'Provide policy reference for vacation carryover.',
+      approver: 'HR Operations',
+      missingFields: [],
+    },
+  };
+}
+
+function createVacationEntitlementOutput(
+  request: string,
+  citations: Citation[]
+): ResolveOpsRequestOutput {
+  const vacationCitations = citations.filter(c => c.code.startsWith('VL-'));
+  const finalCitations = vacationCitations.length > 0 ? vacationCitations.slice(0, 2) : citations.slice(0, 2);
+
+  return {
+    request,
+    risk: 'low',
+    route: 'answer_directly',
+    confidence: 'medium',
+    needsReview: false,
+    explanation: 'Vacation entitlement question routed as policy guidance, not a live balance lookup.',
+    reasoning: [
+      'Query asks about annual vacation allowance rather than remaining balance',
+      'No employee-specific balance lookup required',
+      'Vacation policy contains entitlement and carryover guidance',
+    ],
+    citations: finalCitations,
+    reviewPacket: {
+      summary: 'Employee inquiry about annual vacation entitlement.',
+      recommendedAction: 'Explain annual vacation allowance policy and clarify that remaining balances are separate live data lookups.',
       approver: 'HR Operations',
       missingFields: [],
     },

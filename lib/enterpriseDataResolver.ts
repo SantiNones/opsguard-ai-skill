@@ -74,10 +74,31 @@ export function tryEnterpriseContextAnswer(
   const isSelf = enterpriseContext.actor.employeeId === enterpriseContext.targetEmployee?.employeeId;
 
   // Detect vacation / leave balance intent
-  const isVacationBalanceQuery =
+  const isCarryoverPolicyQuery =
     (q.includes('vacation') || q.includes('leave') || q.includes('pto')) &&
-    (q.includes('balance') || q.includes('left') || q.includes('remaining') ||
-      q.includes('how many') || q.includes('days') || q.includes('available'));
+    (q.includes('carry over') || q.includes('carryover') || q.includes('carry forward') || q.includes('unused'));
+
+  const isAnnualEntitlementQuery =
+    (q.includes('vacation') || q.includes('leave') || q.includes('pto')) &&
+    (
+      q.includes('per year') ||
+      q.includes('each year') ||
+      q.includes('annually') ||
+      q.includes('annual') ||
+      q.includes('entitled') ||
+      q.includes('entitlement') ||
+      q.includes('allowance')
+    ) &&
+    !q.includes('balance') &&
+    !q.includes('left') &&
+    !q.includes('remaining') &&
+    !q.includes('available');
+
+  const isVacationBalanceQuery =
+    !isCarryoverPolicyQuery &&
+    !isAnnualEntitlementQuery &&
+    (q.includes('vacation') || q.includes('leave') || q.includes('pto')) &&
+    (q.includes('balance') || q.includes('left') || q.includes('remaining') || q.includes('available'));
 
   // Detect leave request status query
   const isLeaveStatusQuery =

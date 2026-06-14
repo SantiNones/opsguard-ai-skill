@@ -23,9 +23,9 @@ export interface ScenarioGroup {
 export const scenarioGroups: ScenarioGroup[] = [
   {
     group: 'Auto-answer',
-    color: 'text-green-700',
-    bgColor: 'bg-green-50',
-    borderColor: 'border-green-300',
+    color: 'text-emerald-700',
+    bgColor: 'bg-emerald-50',
+    borderColor: 'border-emerald-300',
     scenarios: [
       {
         label: 'Vacation carryover',
@@ -33,6 +33,14 @@ export const scenarioGroups: ScenarioGroup[] = [
         persona: 'EMP-001',
         expectedOutcome: 'answer_directly',
       },
+    ],
+  },
+  {
+    group: 'Live data lookup',
+    color: 'text-teal-700',
+    bgColor: 'bg-teal-50',
+    borderColor: 'border-teal-300',
+    scenarios: [
       {
         label: 'My vacation balance',
         text: 'How many vacation days do I have left?',
