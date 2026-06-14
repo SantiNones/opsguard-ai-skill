@@ -39,11 +39,12 @@ export function LoadingSequence({ isActive }: LoadingSequenceProps) {
   if (!isActive) return null;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-        Processing
-      </p>
-      <ul className="space-y-2">
+    <div className="og-card p-5 og-fade-up">
+      <div className="flex items-center gap-2 mb-4">
+        <span className="w-4 h-4 border-2 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
+        <p className="text-sm font-semibold text-stone-700">Routing your request</p>
+      </div>
+      <ul className="space-y-2.5">
         {STEPS.map((step, i) => {
           const done = i < currentStep;
           const active = i === currentStep;
@@ -51,28 +52,18 @@ export function LoadingSequence({ isActive }: LoadingSequenceProps) {
 
           return (
             <li key={step} className="flex items-center gap-2.5 text-sm">
-              <span className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+              <span className="shrink-0 w-4 h-4 flex items-center justify-center">
                 {done && (
-                  <svg className="w-4 h-4 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="w-4 h-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                 )}
                 {active && (
-                  <span className="w-3 h-3 border-2 border-red-500 border-t-transparent rounded-full animate-spin block" />
+                  <span className="w-3 h-3 border-2 border-brand-500 border-t-transparent rounded-full animate-spin block" />
                 )}
-                {pending && (
-                  <span className="w-2 h-2 rounded-full bg-gray-200 block" />
-                )}
+                {pending && <span className="w-2 h-2 rounded-full bg-stone-200 block" />}
               </span>
-              <span
-                className={
-                  done
-                    ? 'text-gray-400 line-through decoration-gray-300'
-                    : active
-                    ? 'text-gray-900 font-medium'
-                    : 'text-gray-400'
-                }
-              >
+              <span className={done ? 'text-stone-400' : active ? 'text-stone-900 font-medium' : 'text-stone-400'}>
                 {step}
               </span>
             </li>

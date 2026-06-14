@@ -1,95 +1,87 @@
 'use client';
 
 import { EmployeeResponse } from '@/lib/types';
+import { EmployeeIcon, ArrowRightIcon, DocumentIcon, LockIcon, SparkleIcon } from '@/components/ui/Icons';
 
 interface EmployeeResponseProps {
   response: EmployeeResponse;
 }
 
 const statusColors = {
-  answered: 'bg-green-100 text-green-800',
-  needs_more_info: 'bg-yellow-100 text-yellow-800',
-  sent_to_hr_review: 'bg-blue-100 text-blue-800',
-  not_allowed: 'bg-red-100 text-red-800',
+  answered: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  needs_more_info: 'bg-amber-50 text-amber-700 border-amber-200',
+  sent_to_hr_review: 'bg-violet-50 text-violet-700 border-violet-200',
+  not_allowed: 'bg-red-50 text-red-700 border-red-200',
 };
 
 const statusLabels = {
   answered: 'Answered',
-  needs_more_info: 'Needs More Info',
-  sent_to_hr_review: 'Sent to HR Review',
-  not_allowed: 'Not Allowed',
+  needs_more_info: 'Needs more info',
+  sent_to_hr_review: 'Sent to HR review',
+  not_allowed: 'Access restricted',
 };
 
 function renderWithBold(text: string) {
   const parts = text.split(/\*\*(.*?)\*\*/g);
   return parts.map((part, i) =>
-    i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+    i % 2 === 1 ? <strong key={i} className="font-semibold text-stone-900">{part}</strong> : part
   );
 }
 
 export function EmployeeResponseComponent({ response }: EmployeeResponseProps) {
   const { title, message, status, visibleCitations, missingFields, nextStep, privacyNote, answerSource } = response;
+  const repeatsStatus = title.trim().toLowerCase() === statusLabels[status].toLowerCase();
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="og-card overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <span className="text-sm font-medium text-gray-700">Employee Response</span>
-          </div>
-          <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColors[status]}`}>
-            {statusLabels[status]}
+      <div className="px-5 py-3.5 border-b border-[#f0e8e4] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-7 h-7 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
+            <EmployeeIcon className="w-4 h-4" />
           </span>
+          <span className="text-sm font-semibold text-stone-700">OpsGuard Response</span>
         </div>
+        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusColors[status]}`}>
+          {statusLabels[status]}
+        </span>
       </div>
 
       {/* Content */}
-      <div className="px-4 py-4">
-        {/* Title + source badge */}
-        <div className="flex items-center gap-2 mb-2">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+      <div className="px-5 py-4">
+        <div className="flex items-center gap-2 mb-2.5">
+          {!repeatsStatus && <h3 className="text-lg font-semibold text-stone-900">{title}</h3>}
           {answerSource === 'enterprise_context' && (
-            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+              <SparkleIcon className="w-3 h-3" />
               Live Data
             </span>
           )}
         </div>
 
-        {/* Message */}
-        <div className="text-sm text-gray-700 mb-4 whitespace-pre-wrap">
+        <div className="text-sm text-stone-600 leading-relaxed mb-4 whitespace-pre-wrap">
           {renderWithBold(message)}
         </div>
 
         {/* Next Step */}
         {nextStep && (
-          <div className="mb-4 p-3 bg-gray-50 rounded-md">
+          <div className="mb-3 p-3 bg-[#faf6f4] rounded-xl border border-[#f0e8e4]">
             <div className="flex items-center gap-2 mb-1">
-              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Next Step</span>
+              <ArrowRightIcon className="w-3.5 h-3.5 text-brand-500" />
+              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Next step</span>
             </div>
-            <p className="text-sm text-gray-600">{nextStep}</p>
+            <p className="text-sm text-stone-600">{nextStep}</p>
           </div>
         )}
 
         {/* Missing Fields */}
         {missingFields.length > 0 && (
-          <div className="mb-4 p-3 bg-amber-50 rounded-md">
-            <div className="flex items-center gap-2 mb-2">
-              <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Information Needed</span>
-            </div>
-            <ul className="text-sm text-amber-700 space-y-1">
+          <div className="mb-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
+            <span className="text-[11px] font-semibold text-amber-800 uppercase tracking-wide">Information needed</span>
+            <ul className="mt-1.5 text-sm text-amber-700 space-y-1">
               {missingFields.map((field, index) => (
                 <li key={index} className="flex items-start gap-2">
-                  <span className="text-amber-500 mt-0.5">•</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5" />
                   <span>{field}</span>
                 </li>
               ))}
@@ -99,18 +91,16 @@ export function EmployeeResponseComponent({ response }: EmployeeResponseProps) {
 
         {/* Citations */}
         {visibleCitations.length > 0 && (
-          <div className="mb-4">
+          <div className="mb-1">
             <div className="flex items-center gap-2 mb-2">
-              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">References</span>
+              <DocumentIcon className="w-3.5 h-3.5 text-stone-400" />
+              <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">Policy references</span>
             </div>
             <div className="space-y-2">
               {visibleCitations.map((citation, index) => (
-                <div key={index} className="text-xs p-2 bg-gray-50 rounded border border-gray-100">
-                  <div className="font-medium text-gray-900">{citation.code}: {citation.title}</div>
-                  <div className="text-gray-600 mt-1">{citation.excerpt}</div>
+                <div key={index} className="text-xs p-2.5 bg-[#faf6f4] rounded-lg border border-[#f0e8e4]">
+                  <div className="font-semibold text-stone-800">{citation.code}: {citation.title}</div>
+                  <div className="text-stone-500 mt-0.5">{citation.excerpt}</div>
                 </div>
               ))}
             </div>
@@ -119,14 +109,12 @@ export function EmployeeResponseComponent({ response }: EmployeeResponseProps) {
 
         {/* Privacy Note */}
         {privacyNote && (
-          <div className="p-3 bg-blue-50 rounded-md">
+          <div className="mt-3 p-3 bg-sky-50 rounded-xl border border-sky-100">
             <div className="flex items-start gap-2">
-              <svg className="w-4 h-4 text-blue-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
+              <LockIcon className="w-4 h-4 text-sky-500 mt-0.5 shrink-0" />
               <div>
-                <span className="text-xs font-semibold text-blue-800 uppercase tracking-wide">Privacy Note</span>
-                <p className="text-sm text-blue-700 mt-1">{privacyNote}</p>
+                <span className="text-[11px] font-semibold text-sky-800 uppercase tracking-wide">Privacy note</span>
+                <p className="text-sm text-sky-700 mt-0.5">{privacyNote}</p>
               </div>
             </div>
           </div>

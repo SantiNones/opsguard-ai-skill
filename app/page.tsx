@@ -1,246 +1,117 @@
 'use client';
 
 import { useState } from 'react';
+import { EmployeeRole, employees } from '@/data/enterprise/employees';
+import { NavView, roleDefinitions, canAccessView } from '@/lib/roleConfig';
+import { CreatedReviewCase, REVIEW_CASES_STORAGE_KEY } from '@/lib/reviewCases';
+import { LandingScreen } from '@/components/landing/LandingScreen';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { AppHeader } from '@/components/layout/AppHeader';
-import { RequestComposer } from '@/components/request/RequestComposer';
-import { DecisionSummary } from '@/components/decision/DecisionSummary';
-import { WorkflowStepper } from '@/components/decision/WorkflowStepper';
-import { ActionPacket } from '@/components/action/ActionPacket';
-import { SystemDetails } from '@/components/system/SystemDetails';
-import { EnterpriseContext } from '@/components/enterprise/EnterpriseContext';
-import { PersonaSwitcher } from '@/components/enterprise/PersonaSwitcher';
-import { EmployeeResponseComponent } from '@/components/response/EmployeeResponse';
-import { HRReviewPacketComponent } from '@/components/response/HRReviewPacket';
-import { ViewModeToggle } from '@/components/response/ViewModeToggle';
-import { RetrievalDiagnostics } from '@/components/system/RetrievalDiagnostics';
-import { ConfidencePanel } from '@/components/system/ConfidencePanel';
-import { ConfidentialityPanel } from '@/components/system/ConfidentialityPanel';
-import { ObservabilityPanel } from '@/components/system/ObservabilityPanel';
-import { LoadingSequence } from '@/components/ui/LoadingSequence';
-import { mockResolve } from '@/lib/mockResolve';
-import { ResolveOpsRequestOutput, EmployeeResponse, HRReviewPacket } from '@/lib/types';
-
-type ViewMode = 'both' | 'employee' | 'hr';
+import { RequestConsole } from '@/components/views/RequestConsole';
+import { ReviewQueue } from '@/components/views/ReviewQueue';
+import { Knowledge } from '@/components/views/Knowledge';
+import { Analytics } from '@/components/views/Analytics';
+import { Settings } from '@/components/views/Settings';
 
 export default function Home() {
-  const [request, setRequest] = useState('');
-  const [output, setOutput] = useState<ResolveOpsRequestOutput | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedActorId, setSelectedActorId] = useState<string>('EMP-001'); // Default: Ana García
-  const [viewMode, setViewMode] = useState<ViewMode>('both');
-  const [enterpriseContextData, setEnterpriseContextData] = useState<{
-    actor?: { employeeId: string; name: string; role: string };
-    targetEmployee?: { employeeId: string; name: string } | null;
-    accessLevel: string;
-    redactionsApplied: number;
-    hasContext: boolean;
-  } | null>(null);
-  const [employeeResponse, setEmployeeResponse] = useState<EmployeeResponse | null>(null);
-  const [hrReviewPacket, setHRReviewPacket] = useState<HRReviewPacket | null>(null);
-  const [retrievalDiagnosticsData, setRetrievalDiagnosticsData] = useState<{
-    selectedChunkCount: number;
-    estimatedContextTokens: number;
-    topRuleIds: string[];
-    retrievalConfidence: 'low' | 'medium' | 'high';
-    totalCandidateCount: number;
-    excludedForBudget: string[];
-  } | null>(null);
-  const [confidenceData, setConfidenceData] = useState<{
-    confidenceScore: number;
-    confidenceLabel: 'low' | 'medium' | 'high';
-    confidenceReasons: string[];
-  } | null>(null);
-  const [confidentialityData, setConfidentialityData] = useState<{
-    sensitiveDataDetected: boolean;
-    sensitiveCategories: string[];
-    redactionsApplied: number;
-    restrictedFields: string[];
-    confidentialityLevel: 'low' | 'medium' | 'high';
-  } | null>(null);
-  const [observabilityData, setObservabilityData] = useState<{
-    requestId: string;
-    createdAt: string;
-    resolverMode: 'ai' | 'fallback' | 'deterministic';
-    fallbackReason?: string;
-    latencyMs: number;
-    modelName?: string;
-    retrievalChunkCount: number;
-    estimatedContextTokens: number;
-    topRuleIds: string[];
-    confidenceLabel: 'low' | 'medium' | 'high';
-    confidentialityLevel: 'low' | 'medium' | 'high';
-    redactionsApplied: number;
-    requiresHumanReview: boolean;
-    tokenUsageEstimate: {
-      inputTokensEstimate: number;
-      outputTokensEstimate: number;
-      estimatedCostUsd: number;
-    };
-  } | null>(null);
-
-  const handleAnalyze = async () => {
-    if (!request.trim()) return;
-
-    setIsAnalyzing(true);
-    setError(null);
-    setOutput(null);
-    setEmployeeResponse(null);
-    setHRReviewPacket(null);
-    setEnterpriseContextData(null);
-    setConfidenceData(null);
-    setConfidentialityData(null);
-    setObservabilityData(null);
-    
+  const [role, setRole] = useState<EmployeeRole | null>(null);
+  const [selectedActorId, setSelectedActorId] = useState<string>('EMP-001');
+  const [activeView, setActiveView] = useState<NavView>('console');
+  const [createdReviewCases, setCreatedReviewCases] = useState<CreatedReviewCase[]>(() => {
+    if (typeof window === 'undefined') return [];
     try {
-      // Call the API with actor context
-      const response = await fetch('/api/resolve', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          userRequest: request,
-          actorId: selectedActorId,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        setOutput(result.data.output);
-        if (result.data.enterpriseContext) {
-          setEnterpriseContextData(result.data.enterpriseContext);
-        }
-        if (result.data.employeeResponse) {
-          setEmployeeResponse(result.data.employeeResponse);
-        }
-        if (result.data.hrReviewPacket) {
-          setHRReviewPacket(result.data.hrReviewPacket);
-        }
-        if (result.data.retrievalDiagnostics) {
-          setRetrievalDiagnosticsData(result.data.retrievalDiagnostics);
-        }
-        if (result.data.confidence) {
-          setConfidenceData(result.data.confidence);
-        }
-        if (result.data.confidentiality) {
-          setConfidentialityData(result.data.confidentiality);
-        }
-        if (result.data.observability) {
-          setObservabilityData(result.data.observability);
-        }
-      } else {
-        // API error - fallback to local mock resolver
-        console.warn('API failed, falling back to mock:', result.error);
-        const fallbackResult = mockResolve(request);
-        setOutput(fallbackResult);
-        if (result.error) {
-          setError(`API unavailable. Using local fallback: ${result.error}`);
-        }
+      const raw = window.localStorage.getItem(REVIEW_CASES_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
       }
-    } catch (err) {
-      // Network or other error - fallback to local mock
-      console.warn('Network error, falling back to mock:', err);
-      const fallbackResult = mockResolve(request);
-      setOutput(fallbackResult);
-      setError('Network error. Using local fallback resolver.');
-    } finally {
-      setIsAnalyzing(false);
+    } catch {
+      return [];
+    }
+    return [];
+  });
+
+  const handleCreateReviewCase = (reviewCase: CreatedReviewCase) => {
+    setCreatedReviewCases((current) => {
+      const next = [reviewCase, ...current.filter((item) => item.id !== reviewCase.id)];
+      window.localStorage.setItem(REVIEW_CASES_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleResolveReviewCase = (caseId: string) => {
+    setCreatedReviewCases((current) => {
+      const next = current.map((item) => item.id === caseId ? { ...item, status: 'resolved' as const } : item);
+      window.localStorage.setItem(REVIEW_CASES_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleDeleteReviewCase = (caseId: string) => {
+    setCreatedReviewCases((current) => {
+      const next = current.filter((item) => item.id !== caseId);
+      window.localStorage.setItem(REVIEW_CASES_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleEnter = (selectedRole: EmployeeRole) => {
+    const def = roleDefinitions[selectedRole];
+    setRole(selectedRole);
+    setSelectedActorId(def.defaultPersona);
+    setActiveView(def.defaultView);
+  };
+
+  const handleSwitchRole = () => {
+    setRole(null);
+  };
+
+  const handleSelectView = (view: NavView) => {
+    if (role && canAccessView(role, view)) {
+      setActiveView(view);
     }
   };
 
+  if (!role) {
+    return <LandingScreen onEnter={handleEnter} />;
+  }
+
+  const def = roleDefinitions[role];
+  const personaName = employees.find((e) => e.employeeId === selectedActorId)?.name ?? def.title;
+  // Guard: if current view is not accessible to this role, fall back to default
+  const safeView: NavView = canAccessView(role, activeView) ? activeView : def.defaultView;
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      
-      <main className="flex-1 flex flex-col min-h-screen">
-        <AppHeader />
-        
-        {/* Error Banner */}
-        {error && (
-          <div className="px-8 pt-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
-              <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span className="text-sm text-amber-800">{error}</span>
-              <button 
-                onClick={() => setError(null)}
-                className="ml-auto text-amber-600 hover:text-amber-800"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
+    <div className="flex min-h-screen bg-[#fbf8f6]">
+      <Sidebar
+        role={role}
+        activeView={safeView}
+        onSelectView={handleSelectView}
+        personaName={personaName}
+        onSwitchRole={handleSwitchRole}
+      />
+
+      <main className="flex-1 flex flex-col min-h-screen min-w-0">
+        {safeView === 'console' && (
+          <RequestConsole
+            role={role}
+            selectedActorId={selectedActorId}
+            onActorChange={setSelectedActorId}
+            defaultResponseView={def.defaultResponseView}
+            onCreateReviewCase={handleCreateReviewCase}
+          />
         )}
-        
-        <div className="flex-1 px-8 py-6">
-          {/* 3-Column Workspace */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl">
-            {/* Left: Request Panel */}
-            <div className="space-y-6">
-              <PersonaSwitcher
-                selectedActorId={selectedActorId}
-                onSelectActor={setSelectedActorId}
-              />
-              <RequestComposer
-                value={request}
-                onChange={setRequest}
-                onAnalyze={handleAnalyze}
-                onPersonaChange={setSelectedActorId}
-                isAnalyzing={isAnalyzing}
-              />
-            </div>
-            
-            {/* Center: Primary Decision Panel */}
-            <div className="space-y-4">
-              {/* Loading sequence (shown while analyzing) */}
-              <LoadingSequence isActive={isAnalyzing} />
-
-              {/* View Mode Toggle */}
-              {output && (employeeResponse || hrReviewPacket) && (
-                <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-              )}
-
-              {/* Employee Response — prioritised in employee + both views */}
-              {(viewMode === 'both' || viewMode === 'employee') && employeeResponse && (
-                <EmployeeResponseComponent response={employeeResponse} />
-              )}
-
-              {/* HR Review Packet — always shown in hr view; shown below employee resp in both */}
-              {(viewMode === 'both' || viewMode === 'hr') && hrReviewPacket && (
-                <HRReviewPacketComponent packet={hrReviewPacket} />
-              )}
-
-              {/* Decision Summary — shown in both + hr views */}
-              {viewMode !== 'employee' && output && (
-                <DecisionSummary output={output} />
-              )}
-
-              {/* Workflow Stepper — shown in both + hr views */}
-              {viewMode !== 'employee' && output && (
-                <WorkflowStepper output={output} />
-              )}
-            </div>
-
-            {/* Right: Action + Technical Panels */}
-            <div className="space-y-4">
-              <ActionPacket output={output} />
-
-              {/* Technical panels — secondary, collapsed by default */}
-              <EnterpriseContext context={enterpriseContextData} />
-              <ConfidencePanel confidence={confidenceData} />
-              <ConfidentialityPanel confidentiality={confidentialityData} />
-              <RetrievalDiagnostics diagnostics={retrievalDiagnosticsData} />
-              <ObservabilityPanel observability={observabilityData} />
-              <SystemDetails output={output} />
-            </div>
-          </div>
-        </div>
+        {safeView === 'review' && (
+          <ReviewQueue
+            role={role}
+            selectedActorId={selectedActorId}
+            createdCases={createdReviewCases}
+            onResolveCreatedCase={handleResolveReviewCase}
+            onDeleteCreatedCase={handleDeleteReviewCase}
+          />
+        )}
+        {safeView === 'knowledge' && <Knowledge />}
+        {safeView === 'analytics' && <Analytics />}
+        {safeView === 'settings' && <Settings role={role} personaName={personaName} />}
       </main>
     </div>
   );
