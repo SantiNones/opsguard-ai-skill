@@ -403,6 +403,48 @@ npm run eval:retrieval     # deterministic, no OpenAI
 | Forbidden violations | 0 |
 | Avg context tokens | ~489 / 1800 |
 
+### Confidence Modeling (`lib/confidence.ts`)
+
+Confidence is computed **per-request** as a composite score (0–1) from five factors:
+
+| Factor | Signal |
+|--------|--------|
+| Retrieval confidence | Strong policy match → +0.25, None → −0.20 |
+| Citation count | ≥2 citations → +0.10, 0 citations → −0.15 |
+| Route clarity | `answer_directly` + low risk → +0.10; `ask_for_info` → −0.10 |
+| Resolver mode | AI failure fallback → −0.10 |
+| Access restrictions | `accessLevel=none` → −0.10, redactions → −0.05 |
+
+Labels: **high** (≥70%), **medium** (45–69%), **low** (<45%)
+
+**No-policy-found detection:** When label is `low` + zero citations + low retrieval confidence, the employee response changes to "Policy Not Found" with a direct HR referral message.
+
+**Running Confidence Evals:**
+```bash
+npm run eval:confidence    # deterministic, no OpenAI (8 cases)
+```
+
+### Confidentiality Diagnostics (`lib/privacy/confidentiality.ts`)
+
+Sensitive categories detected via query pattern matching (no real data exposed):
+
+`payroll` · `salary` · `compensation` · `bank_account` · `personal_identifier` · `cross_border` · `email` · `phone` · `address`
+
+Level is **high** when payroll/salary/bank/compensation keywords appear or ≥3 redactions applied; **medium** for PII/cross-border; **low** otherwise.
+
+### Observability Metadata (`lib/observability.ts`)
+
+Per-request operational record surfaced in API response and UI panel:
+
+```
+requestId, createdAt, resolverMode (ai/fallback/deterministic)
+latencyMs, modelName, retrievalChunkCount, estimatedContextTokens
+confidenceLabel, confidentialityLevel, redactionsApplied, requiresHumanReview
+tokenUsageEstimate { inputTokensEstimate, outputTokensEstimate, estimatedCostUsd }
+```
+
+Cost estimate uses published GPT-4o-mini pricing ($0.15/1M input, $0.60/1M output); 0 for deterministic runs.
+
 ## License
 
 MIT — Built for AI Product Engineer interviews and production inspiration.

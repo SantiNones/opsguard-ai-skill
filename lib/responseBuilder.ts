@@ -13,6 +13,7 @@ import {
   Citation,
   DraftAction 
 } from './types';
+import { ConfidenceResult, isNoPolicyFound } from './confidence';
 
 export interface DualAudienceResponse {
   employeeResponse: EmployeeResponse;
@@ -24,10 +25,11 @@ export interface DualAudienceResponse {
  */
 export function buildDualAudienceResponse(
   resolverOutput: ResolveOpsRequestOutput,
-  enterpriseContext?: EnterpriseContextMetadata
+  enterpriseContext?: EnterpriseContextMetadata,
+  confidence?: ConfidenceResult
 ): DualAudienceResponse {
-  const employeeResponse = buildEmployeeResponse(resolverOutput, enterpriseContext);
-  const hrReviewPacket = buildHRReviewPacket(resolverOutput, enterpriseContext);
+  const employeeResponse = buildEmployeeResponse(resolverOutput, enterpriseContext, confidence);
+  const hrReviewPacket = buildHRReviewPacket(resolverOutput, enterpriseContext, confidence);
 
   return {
     employeeResponse,
@@ -40,13 +42,26 @@ export function buildDualAudienceResponse(
  */
 function buildEmployeeResponse(
   output: ResolveOpsRequestOutput,
-  context?: EnterpriseContextMetadata
+  context?: EnterpriseContextMetadata,
+  confidence?: ConfidenceResult
 ): EmployeeResponse {
   const { route, risk, explanation, citations, reviewPacket } = output;
   
   // Filter citations for employee visibility
   const visibleCitations = filterCitationsForEmployee(citations, context);
-  
+
+  // Low-confidence / no-policy note for employee
+  const noPolicyFound = isNoPolicyFound(
+    confidence?.confidenceLabel ?? output.confidence,
+    citations.length,
+    undefined
+  );
+  const confidenceNote = noPolicyFound
+    ? 'We could not find a specific policy for this request. Please contact HR directly or provide more details.'
+    : confidence?.confidenceLabel === 'low' && citations.length === 0
+    ? 'Our confidence in this answer is low. Please verify with your HR team.'
+    : undefined;
+
   // Build response based on route
   switch (route) {
     case 'answer_directly':
@@ -60,16 +75,22 @@ function buildEmployeeResponse(
         privacyNote: (context?.redactionsApplied || 0) > 0 
           ? 'Some information has been masked for privacy.'
           : undefined,
+        confidenceNote,
       };
       
     case 'ask_for_info':
       return {
-        title: 'More Information Needed',
-        message: explanation,
+        title: noPolicyFound ? 'Policy Not Found' : 'More Information Needed',
+        message: noPolicyFound
+          ? 'We could not find a matching HR policy for your request. Please contact your HR team directly or provide more details about your situation.'
+          : explanation,
         status: 'needs_more_info',
         visibleCitations,
         missingFields: extractMissingFields(output),
-        nextStep: 'Please provide the requested information',
+        nextStep: noPolicyFound
+          ? 'Contact HR or provide more details'
+          : 'Please provide the requested information',
+        confidenceNote,
       };
       
     case 'draft_action':
@@ -91,6 +112,7 @@ function buildEmployeeResponse(
           visibleCitations,
           missingFields: extractMissingFields(output),
           nextStep: 'Please complete the required steps',
+          confidenceNote,
         };
       }
       
@@ -122,7 +144,8 @@ function buildEmployeeResponse(
  */
 function buildHRReviewPacket(
   output: ResolveOpsRequestOutput,
-  context?: EnterpriseContextMetadata
+  context?: EnterpriseContextMetadata,
+  confidence?: ConfidenceResult
 ): HRReviewPacket {
   const { risk, route, reasoning, citations, draftAction, reviewPacket } = output;
   
@@ -149,6 +172,9 @@ function buildHRReviewPacket(
       targetEmployee: context?.targetEmployee?.name,
       hasRestrictedData: (context?.redactionsApplied || 0) > 0,
     },
+    confidenceLabel: confidence?.confidenceLabel,
+    confidenceScore: confidence?.confidenceScore,
+    confidenceReasons: confidence?.confidenceReasons,
   };
 }
 

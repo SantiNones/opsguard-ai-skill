@@ -135,8 +135,8 @@ export async function POST(
     // Process the request (with optional actor context)
     const result = await resolveOpsRequest(userRequest, actorId);
 
-    // Build dual audience responses
-    const dualResponse = buildDualAudienceResponse(result.output, result.enterpriseContext);
+    // Build dual audience responses (pass confidence for low-confidence handling)
+    const dualResponse = buildDualAudienceResponse(result.output, result.enterpriseContext, result.confidence);
 
     // Return successful response
     return NextResponse.json(
@@ -159,6 +159,40 @@ export async function POST(
                 retrievalConfidence: result.retrievalDiagnostics.retrievalConfidence,
                 totalCandidateCount: result.retrievalDiagnostics.totalCandidateCount,
                 excludedForBudget: result.retrievalDiagnostics.excludedForBudget,
+              }
+            : undefined,
+          confidence: result.confidence
+            ? {
+                confidenceScore: result.confidence.confidenceScore,
+                confidenceLabel: result.confidence.confidenceLabel,
+                confidenceReasons: result.confidence.confidenceReasons,
+              }
+            : undefined,
+          confidentiality: result.confidentiality
+            ? {
+                sensitiveDataDetected: result.confidentiality.sensitiveDataDetected,
+                sensitiveCategories: result.confidentiality.sensitiveCategories,
+                redactionsApplied: result.confidentiality.redactionsApplied,
+                restrictedFields: result.confidentiality.restrictedFields,
+                confidentialityLevel: result.confidentiality.confidentialityLevel,
+              }
+            : undefined,
+          observability: result.observability
+            ? {
+                requestId: result.observability.requestId,
+                createdAt: result.observability.createdAt,
+                resolverMode: result.observability.resolverMode,
+                fallbackReason: result.observability.fallbackReason,
+                latencyMs: result.observability.latencyMs,
+                modelName: result.observability.modelName,
+                retrievalChunkCount: result.observability.retrievalChunkCount,
+                estimatedContextTokens: result.observability.estimatedContextTokens,
+                topRuleIds: result.observability.topRuleIds,
+                confidenceLabel: result.observability.confidenceLabel,
+                confidentialityLevel: result.observability.confidentialityLevel,
+                redactionsApplied: result.observability.redactionsApplied,
+                requiresHumanReview: result.observability.requiresHumanReview,
+                tokenUsageEstimate: result.observability.tokenUsageEstimate,
               }
             : undefined,
         },
