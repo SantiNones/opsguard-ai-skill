@@ -1,31 +1,7 @@
 import { ResolveOpsRequestOutput, ExampleRequest } from './types';
+import { exampleRequestsFromGroups } from './scenarios';
 
-export const exampleRequests: ExampleRequest[] = [
-  {
-    label: 'Vacation carryover',
-    text: 'Can I carry over my 5 unused vacation days from last year?',
-  },
-  {
-    label: 'Overtime correction',
-    text: 'I forgot to clock in yesterday and worked overtime. Can this be adjusted?',
-  },
-  {
-    label: 'Bank account update',
-    text: 'I need to update my bank account for this month\'s payroll. The cutoff is tomorrow.',
-  },
-  {
-    label: 'Remote work abroad',
-    text: 'Can I work remotely from Portugal next month?',
-  },
-  {
-    label: 'Onboarding documents',
-    text: 'What documents do I need before my first day?',
-  },
-  {
-    label: 'Salary inquiry',
-    text: 'What is Ana\'s salary?',
-  },
-];
+export const exampleRequests: ExampleRequest[] = exampleRequestsFromGroups;
 
 export function mockResolve(request: string): ResolveOpsRequestOutput {
   const normalized = request.toLowerCase();

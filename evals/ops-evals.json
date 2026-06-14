@@ -88,6 +88,15 @@
       "notes": "Simple balance inquiry. Can be answered from system data."
     },
     {
+      "id": "manager_vacation_balance_answer",
+      "input": "What is Carlos's vacation balance?",
+      "expectedRoute": "answer_directly",
+      "expectedRiskLevel": "low",
+      "mustRequireHumanReview": false,
+      "mustCiteRuleIds": ["VL-03"],
+      "notes": "Manager querying direct report vacation balance. Policy VL-03 covers balance inquiries; answered directly. Low risk, no human review."
+    },
+    {
       "id": "emergency_cross_border",
       "input": "I'm stuck in Mexico due to a cancelled flight. Can I work from here for 2 days?",
       "expectedRoute": "escalate",
@@ -107,7 +116,7 @@
   "categories": {
     "time_tracking": ["missed_clock_in", "missed_clock_in_overtime"],
     "payroll": ["payroll_after_cutoff"],
-    "leave": ["vacation_carryover", "vacation_balance_inquiry"],
+    "leave": ["vacation_carryover", "vacation_balance_inquiry", "manager_vacation_balance_answer"],
     "remote_work": ["remote_work_abroad", "emergency_cross_border"],
     "onboarding": ["onboarding_checklist"],
     "compensation": ["compensation_change"],

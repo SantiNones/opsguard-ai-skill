@@ -20,8 +20,15 @@ const statusLabels = {
   not_allowed: 'Not Allowed',
 };
 
+function renderWithBold(text: string) {
+  const parts = text.split(/\*\*(.*?)\*\*/g);
+  return parts.map((part, i) =>
+    i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+  );
+}
+
 export function EmployeeResponseComponent({ response }: EmployeeResponseProps) {
-  const { title, message, status, visibleCitations, missingFields, nextStep, privacyNote } = response;
+  const { title, message, status, visibleCitations, missingFields, nextStep, privacyNote, answerSource } = response;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -42,11 +49,20 @@ export function EmployeeResponseComponent({ response }: EmployeeResponseProps) {
 
       {/* Content */}
       <div className="px-4 py-4">
-        {/* Title */}
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-        
+        {/* Title + source badge */}
+        <div className="flex items-center gap-2 mb-2">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          {answerSource === 'enterprise_context' && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+              Live Data
+            </span>
+          )}
+        </div>
+
         {/* Message */}
-        <div className="text-sm text-gray-700 mb-4 whitespace-pre-wrap">{message}</div>
+        <div className="text-sm text-gray-700 mb-4 whitespace-pre-wrap">
+          {renderWithBold(message)}
+        </div>
 
         {/* Next Step */}
         {nextStep && (

@@ -35,6 +35,8 @@ export interface ResolveOpsRequestOutput {
     approver: string;
     missingFields: string[];
   };
+  answerSource?: 'policy' | 'enterprise_context'; // What grounded the answer
+  enterpriseAnswer?: string;                       // Data-grounded answer text
 }
 
 export interface ExampleRequest {
@@ -73,6 +75,8 @@ export interface EmployeeResponse {
   nextStep: string;
   privacyNote?: string;
   confidenceNote?: string;
+  answerSource?: 'policy' | 'enterprise_context';
+  dataPoints?: string[]; // surfaced data fields (for enterprise context answers)
 }
 
 // HR/Ops-facing review packet
