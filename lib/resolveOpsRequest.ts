@@ -4,6 +4,7 @@ import { applySafetyRules, quickSafetyCheck } from './safetyRules';
 import { aiResolve, isAIEnabled } from './aiResolve';
 import { buildEnterpriseContext, formatEnterpriseContextForResolver, getContextSummary } from './enterpriseContext';
 import { calculateConfidence, ConfidenceResult } from './confidence';
+import { tryEnterpriseContextAnswer } from './enterpriseDataResolver';
 import { assessConfidentiality, ConfidentialityMetadata } from './privacy/confidentiality';
 import { buildObservabilityMetadata, ObservabilityMetadata } from './observability';
 
@@ -73,6 +74,65 @@ export async function resolveOpsRequest(
     userRequest,
     { limit: 5, maxContextTokens: 1800, includeDiagnostics: true }
   );
+
+  // Step 1b: Try enterprise context data answer (before AI/deterministic)
+  // Handles permissioned structured-data queries (vacation balance, leave status)
+  // that don't require policy citations — only actor permission.
+  if (actorId) {
+    const enterpriseContext = buildEnterpriseContext(userRequest, actorId);
+    const dataAnswer = tryEnterpriseContextAnswer(userRequest, enterpriseContext);
+    if (dataAnswer.answered) {
+      const ecOutput: ResolveOpsRequestOutput = {
+        request: userRequest,
+        risk: 'low',
+        route: 'answer_directly',
+        confidence: 'high',
+        needsReview: false,
+        explanation: dataAnswer.answer,
+        reasoning: [
+          'Query answered from permissioned enterprise context data',
+          `Source: leave balance record for ${dataAnswer.targetName}`,
+          'No policy citation required — data is directly accessible',
+        ],
+        citations: [],
+        answerSource: 'enterprise_context',
+        enterpriseAnswer: dataAnswer.answer,
+        reviewPacket: {
+          summary: `Enterprise context answer: ${dataAnswer.dataPoints.join(', ')}`,
+          recommendedAction: 'No action required — informational answer from permissioned data.',
+          approver: 'None',
+          missingFields: [],
+        },
+      };
+      const ecProcessingTimeMs = Date.now() - startTime;
+      const ecConfidence = calculateConfidence(
+        ecOutput, retrievalDiagnostics, enterpriseContextMetadata, 'fallback'
+      );
+      const ecConfidentiality = assessConfidentiality(userRequest, enterpriseContextMetadata);
+      const ecObservability = buildObservabilityMetadata({
+        latencyMs: ecProcessingTimeMs,
+        mode: 'fallback',
+        fallbackReason: 'enterprise_context_answer',
+        retrievalDiagnostics,
+        confidence: ecConfidence,
+        confidentiality: ecConfidentiality,
+        requiresHumanReview: false,
+      });
+      return {
+        output: ecOutput,
+        retrievedChunks,
+        processingTimeMs: ecProcessingTimeMs,
+        safetyOverridesApplied: false,
+        mode: 'fallback',
+        fallbackReason: 'enterprise_context_answer',
+        enterpriseContext: enterpriseContextMetadata,
+        retrievalDiagnostics,
+        confidence: ecConfidence,
+        confidentiality: ecConfidentiality,
+        observability: ecObservability,
+      };
+    }
+  }
 
   // Step 2: Try AI resolver if enabled
   let baseOutput: ResolveOpsRequestOutput;

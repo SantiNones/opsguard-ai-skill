@@ -17,9 +17,9 @@ import { RetrievalDiagnostics } from '@/components/system/RetrievalDiagnostics';
 import { ConfidencePanel } from '@/components/system/ConfidencePanel';
 import { ConfidentialityPanel } from '@/components/system/ConfidentialityPanel';
 import { ObservabilityPanel } from '@/components/system/ObservabilityPanel';
-import { mockResolve, exampleRequests } from '@/lib/mockResolve';
+import { LoadingSequence } from '@/components/ui/LoadingSequence';
+import { mockResolve } from '@/lib/mockResolve';
 import { ResolveOpsRequestOutput, EmployeeResponse, HRReviewPacket } from '@/lib/types';
-import { employees } from '@/data/enterprise/employees';
 
 type ViewMode = 'both' | 'employee' | 'hr';
 
@@ -82,9 +82,12 @@ export default function Home() {
 
   const handleAnalyze = async () => {
     if (!request.trim()) return;
-    
+
     setIsAnalyzing(true);
     setError(null);
+    setOutput(null);
+    setEmployeeResponse(null);
+    setHRReviewPacket(null);
     setEnterpriseContextData(null);
     setConfidenceData(null);
     setConfidentialityData(null);
@@ -188,38 +191,50 @@ export default function Home() {
                 value={request}
                 onChange={setRequest}
                 onAnalyze={handleAnalyze}
-                examples={exampleRequests}
+                onPersonaChange={setSelectedActorId}
                 isAnalyzing={isAnalyzing}
               />
             </div>
             
-            {/* Center: Decision Panel */}
-            <div className="space-y-6">
+            {/* Center: Primary Decision Panel */}
+            <div className="space-y-4">
+              {/* Loading sequence (shown while analyzing) */}
+              <LoadingSequence isActive={isAnalyzing} />
+
               {/* View Mode Toggle */}
               {output && (employeeResponse || hrReviewPacket) && (
                 <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
               )}
 
-              {/* Employee Response */}
+              {/* Employee Response — prioritised in employee + both views */}
               {(viewMode === 'both' || viewMode === 'employee') && employeeResponse && (
                 <EmployeeResponseComponent response={employeeResponse} />
               )}
 
-              {/* HR Review Packet */}
+              {/* HR Review Packet — always shown in hr view; shown below employee resp in both */}
               {(viewMode === 'both' || viewMode === 'hr') && hrReviewPacket && (
                 <HRReviewPacketComponent packet={hrReviewPacket} />
               )}
 
-              <DecisionSummary output={output} />
-              <WorkflowStepper output={output} />
+              {/* Decision Summary — shown in both + hr views */}
+              {viewMode !== 'employee' && output && (
+                <DecisionSummary output={output} />
+              )}
+
+              {/* Workflow Stepper — shown in both + hr views */}
+              {viewMode !== 'employee' && output && (
+                <WorkflowStepper output={output} />
+              )}
             </div>
-            
-            {/* Right: Action Panel */}
-            <div className="space-y-6">
+
+            {/* Right: Action + Technical Panels */}
+            <div className="space-y-4">
               <ActionPacket output={output} />
+
+              {/* Technical panels — secondary, collapsed by default */}
+              <EnterpriseContext context={enterpriseContextData} />
               <ConfidencePanel confidence={confidenceData} />
               <ConfidentialityPanel confidentiality={confidentialityData} />
-              <EnterpriseContext context={enterpriseContextData} />
               <RetrievalDiagnostics diagnostics={retrievalDiagnosticsData} />
               <ObservabilityPanel observability={observabilityData} />
               <SystemDetails output={output} />

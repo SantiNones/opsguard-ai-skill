@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ExampleRequest } from '@/lib/types';
+import { scenarioGroups, Scenario } from '@/lib/scenarios';
 
 interface RequestComposerProps {
   value: string;
   onChange: (value: string) => void;
   onAnalyze: () => void;
-  examples: ExampleRequest[];
+  onPersonaChange?: (actorId: string) => void;
   isAnalyzing?: boolean;
 }
 
@@ -15,60 +15,72 @@ export function RequestComposer({
   value,
   onChange,
   onAnalyze,
-  examples,
+  onPersonaChange,
   isAnalyzing = false,
 }: RequestComposerProps) {
-  const [selectedExample, setSelectedExample] = useState<string | null>(null);
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
 
-  const handleExampleClick = (example: ExampleRequest) => {
-    onChange(example.text);
-    setSelectedExample(example.label);
+  const handleScenarioClick = (scenario: Scenario) => {
+    onChange(scenario.text);
+    setSelectedLabel(scenario.label);
+    if (scenario.persona && onPersonaChange) {
+      onPersonaChange(scenario.persona);
+    }
   };
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-      <div className="p-6">
-        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
+      <div className="p-5">
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
           Request
         </h2>
-        
+
         <textarea
           value={value}
           onChange={(e) => {
             onChange(e.target.value);
-            if (e.target.value !== value) {
-              setSelectedExample(null);
-            }
+            if (e.target.value !== value) setSelectedLabel(null);
           }}
           placeholder="Paste an HR Operations request here..."
-          className="w-full h-40 p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-gray-700 placeholder:text-gray-400"
+          className="w-full h-36 p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm text-gray-700 placeholder:text-gray-400"
         />
-        
-        <div className="mt-4">
-          <p className="text-xs text-gray-500 mb-2">Load example:</p>
-          <div className="flex flex-wrap gap-2">
-            {examples.map((example) => (
-              <button
-                key={example.label}
-                onClick={() => handleExampleClick(example)}
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
-                  selectedExample === example.label
-                    ? 'bg-red-100 text-red-700 border border-red-200'
-                    : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 hover:text-gray-700'
-                }`}
-              >
-                {example.label}
-              </button>
-            ))}
-          </div>
+
+        {/* Grouped Scenarios */}
+        <div className="mt-4 space-y-3">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Demo scenarios</p>
+          {scenarioGroups.map((group) => (
+            <div key={group.group}>
+              <p className={`text-xs font-semibold mb-1.5 ${group.color}`}>
+                {group.group}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {group.scenarios.map((scenario) => {
+                  const isSelected = selectedLabel === scenario.label;
+                  return (
+                    <button
+                      key={scenario.label}
+                      onClick={() => handleScenarioClick(scenario)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors border ${
+                        isSelected
+                          ? `${group.bgColor} ${group.color} ${group.borderColor}`
+                          : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100 hover:text-gray-700'
+                      }`}
+                    >
+                      {scenario.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
-        
+
         <button
           onClick={onAnalyze}
           disabled={!value.trim() || isAnalyzing}
-          className="mt-6 w-full bg-red-600 text-white font-medium py-2.5 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="mt-5 w-full bg-red-600 text-white font-semibold py-2.5 px-4 rounded-lg hover:bg-red-700 active:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
         >
-          {isAnalyzing ? 'Analyzing...' : 'Analyze request'}
+          {isAnalyzing ? 'Analyzing…' : 'Analyze request'}
         </button>
       </div>
     </div>

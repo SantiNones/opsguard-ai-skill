@@ -64,19 +64,29 @@ function buildEmployeeResponse(
 
   // Build response based on route
   switch (route) {
-    case 'answer_directly':
+    case 'answer_directly': {
+      const isEnterpriseAnswer = output.answerSource === 'enterprise_context';
       return {
         title: 'Answered',
-        message: explanation,
+        message: isEnterpriseAnswer
+          ? (output.enterpriseAnswer ?? explanation)
+          : explanation,
         status: 'answered',
-        visibleCitations,
+        visibleCitations: isEnterpriseAnswer ? [] : visibleCitations,
         missingFields: [],
         nextStep: 'No action needed',
-        privacyNote: (context?.redactionsApplied || 0) > 0 
+        privacyNote: isEnterpriseAnswer
+          ? 'Answer retrieved from your permissioned enterprise record.'
+          : (context?.redactionsApplied || 0) > 0
           ? 'Some information has been masked for privacy.'
           : undefined,
         confidenceNote,
+        answerSource: output.answerSource,
+        dataPoints: isEnterpriseAnswer
+          ? (output.reviewPacket?.summary.replace('Enterprise context answer: ', '').split(', ') ?? [])
+          : undefined,
       };
+    }
       
     case 'ask_for_info':
       return {
@@ -155,16 +165,21 @@ function buildHRReviewPacket(
   // Build access control notes
   const accessControlNotes = buildAccessControlNotes(context);
   
+  const isEnterpriseAnswer = output.answerSource === 'enterprise_context';
   return {
     riskLevel: risk,
     route,
     requiresHumanReview: route !== 'answer_directly' || risk === 'high',
-    reasoning,
+    reasoning: isEnterpriseAnswer
+      ? ['Answered from permissioned enterprise context (leave balance data)', ...reasoning]
+      : reasoning,
     missingFields: extractMissingFields(output),
     citations,
     draftAction,
     recommendedOwner,
-    accessControlNotes,
+    accessControlNotes: isEnterpriseAnswer
+      ? `${accessControlNotes}. Answer sourced from enterprise leave records (no policy citation needed).`
+      : accessControlNotes,
     redactionsApplied: context?.redactionsApplied || 0,
     enterpriseContextSummary: {
       actorRole: context?.actor?.role || 'unknown',

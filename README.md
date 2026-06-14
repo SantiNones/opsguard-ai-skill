@@ -90,7 +90,71 @@ policies/         # HR policy documents with rule IDs
 evals/            # Test cases and eval suite
 ```
 
+## Demo Outcomes
+
+OpsGuard demonstrates six distinct capabilities via grouped scenario chips:
+
+| Outcome | Scenario | What to Expect |
+|---------|----------|----------------|
+| **Auto-answer (policy)** | Vacation carryover | Direct answer with VL-01 citation |
+| **Auto-answer (live data)** | My vacation balance | Live balance from enterprise record — "Live Data" badge |
+| **Auto-answer (manager view)** | Carlos's vacation balance | Manager sees direct report's balance; `answerSource: enterprise_context` |
+| **Draft action** | Missed clock-in / Overtime | Draft ticket, manager approval required |
+| **Escalate** | Payroll bank update / Remote abroad | Immediate HR specialist handoff |
+| **Deny / Redact** | Colleague's salary | "Not allowed" for employee; access-denied packet for HR |
+
+### Policy Citation vs Enterprise Context Source
+
+| Answer type | Source | When used |
+|-------------|--------|-----------|
+| **Policy citation** | Policy Knowledge Base (VL-01, TT-01, ...) | Query asks *what the rule says* |
+| **Enterprise context** | Live employee record (leave balance data) | Query asks *what my specific data is* |
+
+The key distinction: "Can I carry over vacation days?" → policy answer. "How many days do I have left?" with actorId → enterprise context answer.
+
+### Supported Request Types
+
+- **Leave & Vacation** — balance, carryover, approval notice, approval process
+- **Time & Overtime** — missed clock-ins, overtime corrections, audit requirements
+- **Payroll** — bank account changes, cutoff emergencies, payroll records
+- **Remote Work** — domestic remote, cross-border work, compliance review
+- **Onboarding** — pre-start checklist, document requirements
+- **Compensation** — salary change requests (always escalated)
+- **Ambiguous** — unclear requests (routed to ask_for_info)
+
+### Auto-answer vs Draft vs Escalate vs Deny
+
+```
+Low risk + high confidence + policy found  → answer_directly
+Insufficient context                        → ask_for_info
+Medium risk + approval chain needed         → draft_action
+High risk / compliance trigger              → escalate
+No access / access denied                  → escalate with deny packet
+```
+
+### View Mode Guide
+
+| Mode | Best For | What You See |
+|------|----------|--------------|
+| **Both Views** | Demo / interview | Full picture: employee answer + HR packet + decision summary |
+| **Employee View** | UX review | Only what the employee sees — clean, simple, no internal details |
+| **HR View** | HR/Ops review | HR packet, risk level, citations, recommended owner, audit trail |
+
 ## Current Status
+
+**Sprint 8 Complete (Demo Polish & Outcome Routing):**
+
+- ✅ **Enterprise Context Answers** — Vacation balance, leave status answered from permissioned live data without requiring policy citations
+- ✅ **Grouped Demo Scenarios** — Auto-answer / Draft action / Escalate / Deny groups replace flat example chips
+- ✅ **Persona Auto-select** — Clicking a scenario chip auto-sets the recommended actor persona
+- ✅ **Loading Sequence** — Animated 6-step progress indicator during analysis (UI-only, single API call)
+- ✅ **Live Data Badge** — Employee response shows "Live Data" badge when answer comes from enterprise record
+- ✅ **Bold Rendering** — Key data in enterprise answers rendered as bold text
+- ✅ **Improved View Modes** — Employee view hides Decision Summary/Workflow; HR view shows all internal detail
+- ✅ **Technical Panels Reordered** — Enterprise Context, Confidence, Confidentiality, Diagnostics, Observability collapsed in right column
+- ✅ **Leave Status Data** — `vacationBalance`, `usedVacationDays`, `remainingVacationDays`, `pendingLeaveRequests`, `lastClockInStatus` per employee
+- ✅ **New Eval Case** — `manager_vacation_balance_answer` (route: answer_directly, risk: low, no review)
+- ✅ **All 11 evals pass** — Including new leave balance case
 
 **Milestone 6 Complete:** RAG Quality Layer — Rule-level chunking, context budgeting, retrieval evals
 
@@ -192,11 +256,11 @@ evals/            # Test cases and eval suite
 
 🚀 **[https://opsguard-ai-skill.vercel.app/](https://opsguard-ai-skill.vercel.app/)**
 
-Try the example chips:
-- **Vacation** → Low risk, direct answer
-- **Clock-in** → Medium risk, draft action
-- **Payroll** → High risk, escalate
-- **Remote abroad** → High risk, escalate
+Try the grouped scenario chips:
+- **Auto-answer** → Vacation carryover (policy) · My vacation balance (live data) · Carlos's balance (manager)
+- **Draft action** → Missed clock-in · Overtime correction
+- **Escalate** → Payroll bank update · Remote work abroad
+- **Deny / Redact** → Colleague's salary
 
 ## Repository
 
