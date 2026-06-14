@@ -15,6 +15,7 @@
 import { getLeaveStatus } from '@/data/enterprise/leaveStatus';
 import { getEmployeeById } from '@/data/enterprise/employees';
 import { EnterpriseContextResult } from './enterpriseContext';
+import { determineAccess } from './accessControl';
 
 export interface EnterpriseDataAnswer {
   answered: true;
@@ -25,7 +26,37 @@ export interface EnterpriseDataAnswer {
   isSelf: boolean;
 }
 
-export type EnterpriseDataResult = EnterpriseDataAnswer | { answered: false };
+export interface EnterpriseDataDenied {
+  answered: false;
+  accessDenied: true;
+  targetFirstName: string;   // used to build the denial message
+}
+
+export type EnterpriseDataResult = EnterpriseDataAnswer | EnterpriseDataDenied | { answered: false; accessDenied?: never };
+
+/**
+ * Check if actor is permitted to view leave balance data for target.
+ *
+ * Leave balance is HR employee-admin data, NOT payroll data:
+ *   - Self access: always allowed
+ *   - Manager → direct report: allowed (canApproveVacation)
+ *   - HR Ops → anyone: allowed (leave admin role)
+ *   - Payroll Admin → non-self: DENIED (payroll ≠ leave admin)
+ *   - Employee peer → non-self: DENIED
+ */
+function canAccessLeaveBalance(
+  actorId: string,
+  targetId: string,
+  actorRole: string
+): boolean {
+  if (actorId === targetId) return true;
+  if (actorRole === 'hr_ops') return true;
+  if (actorRole === 'manager') {
+    const access = determineAccess(actorId, targetId);
+    return access.isDirectReport;
+  }
+  return false;
+}
 
 /**
  * Detect whether the query asks for vacation balance or leave status,
@@ -52,21 +83,39 @@ export function tryEnterpriseContextAnswer(
   const isLeaveStatusQuery =
     q.includes('pending') && (q.includes('leave') || q.includes('vacation') || q.includes('request'));
 
-  // Detect clock-in / attendance status query
+  // Detect clock-in / attendance status query (pure lookups only)
+  // Exclude action/correction workflows: "I forgot to clock in", "how do I fix/report", etc.
+  const isActionRequest =
+    q.includes('forgot') || q.includes('fix') || q.includes('report') ||
+    q.includes('correct') || q.includes('adjust') || q.includes('how do i') ||
+    q.includes('how can i') || q.includes('what do i') || q.includes('what should i') ||
+    q.includes('overtime');
   const isClockStatusQuery =
-    q.includes('clock') && (q.includes('status') || q.includes('in') || q.includes('last'));
+    !isActionRequest &&
+    q.includes('clock') && (q.includes('status') || q.includes('last clock') || q.includes('last clock-in'));
 
   if (!isVacationBalanceQuery && !isLeaveStatusQuery && !isClockStatusQuery) {
     return { answered: false };
   }
 
-  // Access check: actor must have at least minimal access to target
-  if (enterpriseContext.accessLevel === 'none') {
+  // Permission check: use leave-specific access rules (stricter than general accessLevel)
+  const actorId = enterpriseContext.actor.employeeId;
+  const targetId = enterpriseContext.targetEmployee?.employeeId ?? actorId;
+  if (!canAccessLeaveBalance(actorId, targetId, enterpriseContext.actor.role)) {
+    // If the query was for a SPECIFIC other employee, signal access denied explicitly
+    // so the resolver can return a clear restriction message instead of a policy fallthrough.
+    if (actorId !== targetId) {
+      const deniedTarget = getEmployeeById(targetId);
+      return {
+        answered: false,
+        accessDenied: true,
+        targetFirstName: deniedTarget?.name.split(' ')[0] ?? 'that employee',
+      };
+    }
     return { answered: false };
   }
 
   // Determine which employee's data to surface
-  const targetId = enterpriseContext.targetEmployee?.employeeId ?? enterpriseContext.actor.employeeId;
   const leave = getLeaveStatus(targetId);
   if (!leave) return { answered: false };
 
