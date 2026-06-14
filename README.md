@@ -119,6 +119,24 @@ evals/            # Test cases and eval suite
 - ✅ **API Route** — `/api/resolve` endpoint with structured request/response
 - ✅ **UI/API Integration** — Frontend calls API with graceful fallback to local mock
 
+**Milestone 5 Complete:** Dual Audience UX — Employee Answer + HR Review Packet
+
+- ✅ **Dual Output Types** — EmployeeResponse and HRReviewPacket interfaces
+- ✅ **Response Builder** — Transforms resolver output into audience-specific responses
+- ✅ **Employee-Facing UI** — Clear, safe answers with status badges and privacy notes
+- ✅ **HR Review UI** — Structured packets with risk, reasoning, and recommended actions
+- ✅ **View Mode Toggle** — Switch between Employee, HR, or Both views
+- ✅ **Safe Escalation** — Sensitive requests automatically routed to HR review
+- ✅ **Access-Aware Citations** — Employees only see non-sensitive policy references
+- ✅ **Backward Compatibility** — Existing UI components and evals preserved
+
+**Dual Audience Examples:**
+| Request | Employee Sees | HR Sees |
+|---------|---------------|---------|
+| "Can I carry over vacation days?" | Direct answer with policy citation | Review packet with low risk |
+| "What is Ana's salary?" | "Not allowed" with privacy note | Access denied packet with audit trail |
+| "Need payroll bank update" | "Sent to HR review" message | Escalation packet with draft action |
+
 **Milestone 4 Complete:** Enterprise Context & Access Control Simulation
 
 - ✅ **Fictitious Enterprise Dataset** — 8 Spanish/European employees, contracts, payroll records
@@ -297,6 +315,35 @@ Payroll Admin: Can see payroll records (salary, bank last4)
 Mock data → HRIS API (Workday/BambooHR) + Identity Provider (Okta/Azure AD) + Audit logging
 
 See `docs/ACCESS_CONTROL.md` for full documentation.
+
+### Dual Audience UX
+
+OpsGuard provides two distinct views for HR Operations requests:
+
+**Employee Response:**
+- Clear, simple answers in employee-friendly language
+- Status badges: Answered, Needs More Info, Sent to HR Review, Not Allowed
+- Privacy notes when data is redacted
+- Safe escalation messages for sensitive requests
+- Limited to non-sensitive policy citations
+
+**HR Review Packet:**
+- Structured internal packet with risk assessment
+- Complete reasoning and policy citations
+- Draft actions for HR to execute
+- Access control notes and audit trail
+- Recommended owner assignment
+
+**View Modes:**
+- **Both Views** (default): Shows employee response first, then HR packet
+- **Employee View**: Shows only what the employee would see
+- **HR View**: Shows only the internal review packet
+
+**Example Flows:**
+1. **Simple Policy Question** → Employee gets direct answer, HR gets low-risk packet
+2. **Missing Information** → Employee sees what's needed, HR gets escalation packet
+3. **Sensitive Request** → Employee gets "sent to HR review", HR gets detailed packet with draft action
+4. **Access Denied** → Employee sees "not allowed", HR sees access control audit
 
 ## License
 

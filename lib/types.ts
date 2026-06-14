@@ -62,3 +62,34 @@ export interface EnterpriseContextMetadata {
   redactionsApplied: number;
   hasContext: boolean;
 }
+
+// Employee-facing response
+export interface EmployeeResponse {
+  title: string;
+  message: string;
+  status: 'answered' | 'needs_more_info' | 'sent_to_hr_review' | 'not_allowed';
+  visibleCitations: Citation[];
+  missingFields: string[];
+  nextStep: string;
+  privacyNote?: string;
+}
+
+// HR/Ops-facing review packet
+export interface HRReviewPacket {
+  riskLevel: RiskLevel;
+  route: Route;
+  requiresHumanReview: boolean;
+  reasoning: string[];
+  missingFields: string[];
+  citations: Citation[];
+  draftAction?: DraftAction;
+  recommendedOwner: string;
+  accessControlNotes: string;
+  redactionsApplied: number;
+  enterpriseContextSummary: {
+    actorRole: string;
+    accessLevel: string;
+    targetEmployee?: string;
+    hasRestrictedData: boolean;
+  };
+}

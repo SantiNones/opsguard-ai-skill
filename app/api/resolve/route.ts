@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveOpsRequest } from '@/lib/resolveOpsRequest';
-import { ResolveOpsRequestOutput } from '@/lib/types';
+import { ResolveOpsRequestOutput, EnterpriseContextMetadata } from '@/lib/types';
+import { buildDualAudienceResponse } from '@/lib/responseBuilder';
 
 export interface ResolveRequestBody {
   userRequest: string;
@@ -28,6 +29,46 @@ export interface ResolveResponse {
       accessLevel: string;
       redactionsApplied: number;
       hasContext: boolean;
+    };
+    employeeResponse?: {
+      title: string;
+      message: string;
+      status: 'answered' | 'needs_more_info' | 'sent_to_hr_review' | 'not_allowed';
+      visibleCitations: Array<{
+        code: string;
+        title: string;
+        excerpt: string;
+      }>;
+      missingFields: string[];
+      nextStep: string;
+      privacyNote?: string;
+    };
+    hrReviewPacket?: {
+      riskLevel: 'low' | 'medium' | 'high';
+      route: 'answer_directly' | 'ask_for_info' | 'draft_action' | 'escalate';
+      requiresHumanReview: boolean;
+      reasoning: string[];
+      missingFields: string[];
+      citations: Array<{
+        code: string;
+        title: string;
+        excerpt: string;
+      }>;
+      draftAction?: {
+        type: string;
+        description: string;
+        approver: string;
+        missingFields: string[];
+      };
+      recommendedOwner: string;
+      accessControlNotes: string;
+      redactionsApplied: number;
+      enterpriseContextSummary: {
+        actorRole: string;
+        accessLevel: string;
+        targetEmployee?: string;
+        hasRestrictedData: boolean;
+      };
     };
   };
   error?: string;
@@ -94,6 +135,9 @@ export async function POST(
     // Process the request (with optional actor context)
     const result = await resolveOpsRequest(userRequest, actorId);
 
+    // Build dual audience responses
+    const dualResponse = buildDualAudienceResponse(result.output, result.enterpriseContext);
+
     // Return successful response
     return NextResponse.json(
       {
@@ -105,6 +149,8 @@ export async function POST(
           mode: result.mode,
           fallbackReason: result.fallbackReason,
           enterpriseContext: result.enterpriseContext,
+          employeeResponse: dualResponse.employeeResponse,
+          hrReviewPacket: dualResponse.hrReviewPacket,
         },
       },
       { status: 200 }

@@ -512,8 +512,89 @@ Similar to Slack, using Teams Adaptive Cards for rich UI.
 
 ---
 
-## 12. Changelog
+## 12. Dual Audience UX
+
+### 12.1 Product Concept
+
+OpsGuard serves two distinct audiences with different needs:
+
+**Employees (External):**
+- Need clear, simple answers to HR questions
+- Should not see sensitive peer data or internal processes
+- Get safe escalation messages for sensitive requests
+- See privacy notes when data is redacted
+
+**HR/Ops Teams (Internal):**
+- Need structured packets for case review and action
+- See full reasoning, risk assessment, and policy citations
+- Get draft actions and recommended assignments
+- Require audit trails for compliance
+
+### 12.2 Response Flow
+
+```
+User Request + Actor Context
+        ↓
+   Resolver Output
+        ↓
+   Response Builder
+   ┌─────────────────┐
+   │                 │
+   ▼                 ▼
+Employee        HR Review
+Response         Packet
+   │                 │
+   └─────┬───────────┘
+         ▼
+    API Response
+   (Both outputs)
+```
+
+### 12.3 UI Components
+
+```
+Center Column (Decision Panel)
+├── View Mode Toggle
+│   ├── Both Views (default)
+│   ├── Employee View
+│   └── HR View
+├── EmployeeResponse
+│   ├── Status Badge
+│   ├── Message
+│   ├── Next Steps
+│   ├── Missing Fields
+│   ├── Citations (filtered)
+│   └── Privacy Note
+└── HRReviewPacket
+    ├── Risk/Route Badges
+    ├── Context Summary
+    ├── Recommended Owner
+    ├── Reasoning
+    ├── Draft Action
+    ├── Citations (full)
+    └── Access Control Notes
+```
+
+### 12.4 Data Transformations
+
+**Employee Response Rules:**
+- `answer_directly` + low risk = "answered" with explanation
+- `ask_for_info` = "needs_more_info" with required fields
+- `draft_action` + high risk = "sent_to_hr_review"
+- `escalate` = "sent_to_hr_review"
+- Access denied = "not_allowed"
+
+**Citation Filtering:**
+- Employees see non-sensitive citations only
+- HR sees all citations for audit trail
+- Payroll/compensation citations hidden from non-HR roles
+
+---
+
+## 13. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 0.1.0-mvp | June 2026 | Initial architecture for weekend MVP |
+| 0.4.0 | June 2026 | Enterprise context and access control |
+| 0.5.0 | June 2026 | Dual audience UX with employee/HR responses |

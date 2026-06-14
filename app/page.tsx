@@ -10,9 +10,14 @@ import { ActionPacket } from '@/components/action/ActionPacket';
 import { SystemDetails } from '@/components/system/SystemDetails';
 import { EnterpriseContext } from '@/components/enterprise/EnterpriseContext';
 import { PersonaSwitcher } from '@/components/enterprise/PersonaSwitcher';
+import { EmployeeResponseComponent } from '@/components/response/EmployeeResponse';
+import { HRReviewPacketComponent } from '@/components/response/HRReviewPacket';
+import { ViewModeToggle } from '@/components/response/ViewModeToggle';
 import { mockResolve, exampleRequests } from '@/lib/mockResolve';
-import { ResolveOpsRequestOutput } from '@/lib/types';
+import { ResolveOpsRequestOutput, EmployeeResponse, HRReviewPacket } from '@/lib/types';
 import { employees } from '@/data/enterprise/employees';
+
+type ViewMode = 'both' | 'employee' | 'hr';
 
 export default function Home() {
   const [request, setRequest] = useState('');
@@ -20,6 +25,7 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedActorId, setSelectedActorId] = useState<string>('EMP-001'); // Default: Ana García
+  const [viewMode, setViewMode] = useState<ViewMode>('both');
   const [enterpriseContextData, setEnterpriseContextData] = useState<{
     actor?: { employeeId: string; name: string; role: string };
     targetEmployee?: { employeeId: string; name: string } | null;
@@ -27,6 +33,8 @@ export default function Home() {
     redactionsApplied: number;
     hasContext: boolean;
   } | null>(null);
+  const [employeeResponse, setEmployeeResponse] = useState<EmployeeResponse | null>(null);
+  const [hrReviewPacket, setHRReviewPacket] = useState<HRReviewPacket | null>(null);
 
   const handleAnalyze = async () => {
     if (!request.trim()) return;
@@ -54,6 +62,12 @@ export default function Home() {
         setOutput(result.data.output);
         if (result.data.enterpriseContext) {
           setEnterpriseContextData(result.data.enterpriseContext);
+        }
+        if (result.data.employeeResponse) {
+          setEmployeeResponse(result.data.employeeResponse);
+        }
+        if (result.data.hrReviewPacket) {
+          setHRReviewPacket(result.data.hrReviewPacket);
         }
       } else {
         // API error - fallback to local mock resolver
@@ -122,6 +136,21 @@ export default function Home() {
             
             {/* Center: Decision Panel */}
             <div className="space-y-6">
+              {/* View Mode Toggle */}
+              {output && (employeeResponse || hrReviewPacket) && (
+                <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+              )}
+
+              {/* Employee Response */}
+              {(viewMode === 'both' || viewMode === 'employee') && employeeResponse && (
+                <EmployeeResponseComponent response={employeeResponse} />
+              )}
+
+              {/* HR Review Packet */}
+              {(viewMode === 'both' || viewMode === 'hr') && hrReviewPacket && (
+                <HRReviewPacketComponent packet={hrReviewPacket} />
+              )}
+
               <DecisionSummary output={output} />
               <WorkflowStepper output={output} />
             </div>
