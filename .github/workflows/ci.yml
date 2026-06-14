@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Answer evals (deterministic, no OpenAI)
+        run: USE_AI=false npm run eval
+
+      - name: Retrieval evals (deterministic, no OpenAI)
+        run: |
+          if node -e "process.exit(require('./package.json').scripts['eval:retrieval'] ? 0 : 1)"; then
+            echo "Running eval:retrieval..."
+            npm run eval:retrieval
+          else
+            echo "eval:retrieval script not defined in package.json — skipping"
+          fi
+        shell: bash
