@@ -81,6 +81,57 @@ export async function resolveOpsRequest(
   if (actorId) {
     const enterpriseContext = buildEnterpriseContext(userRequest, actorId);
     const dataAnswer = tryEnterpriseContextAnswer(userRequest, enterpriseContext);
+
+    // Access-denied: query targeted a specific employee but actor lacks permission.
+    // Return a clear restriction response; do not fall through to the policy path.
+    if (!dataAnswer.answered && dataAnswer.accessDenied) {
+      const deniedOutput: ResolveOpsRequestOutput = {
+        request: userRequest,
+        risk: 'low',
+        route: 'ask_for_info',
+        confidence: 'high',
+        needsReview: false,
+        explanation: `I'm not able to show you ${dataAnswer.targetFirstName}'s vacation balance. Only managers, HR Ops, or the employee themselves can access that information. Please contact HR directly if you have a legitimate need.`,
+        reasoning: [
+          `Access denied: actor role (${enterpriseContext?.actor.role}) is not permitted to view leave balance for ${dataAnswer.targetFirstName}`,
+          'Leave balance data is restricted to self, direct managers, and HR Ops',
+          'No leave data was returned',
+        ],
+        citations: [],
+        reviewPacket: {
+          summary: `Access restricted: actor attempted to view leave balance for ${dataAnswer.targetFirstName} without permission.`,
+          recommendedAction: 'No action required. Actor should contact HR if they have a legitimate business need.',
+          approver: 'None',
+          missingFields: [],
+        },
+      };
+      const deniedProcessingTimeMs = Date.now() - startTime;
+      const deniedConfidence = calculateConfidence(deniedOutput, retrievalDiagnostics, enterpriseContextMetadata, 'fallback');
+      const deniedConfidentiality = assessConfidentiality(userRequest, enterpriseContextMetadata);
+      const deniedObservability = buildObservabilityMetadata({
+        latencyMs: deniedProcessingTimeMs,
+        mode: 'fallback',
+        fallbackReason: 'enterprise_access_denied',
+        retrievalDiagnostics,
+        confidence: deniedConfidence,
+        confidentiality: deniedConfidentiality,
+        requiresHumanReview: false,
+      });
+      return {
+        output: deniedOutput,
+        retrievedChunks,
+        processingTimeMs: deniedProcessingTimeMs,
+        safetyOverridesApplied: false,
+        mode: 'fallback',
+        fallbackReason: 'enterprise_access_denied',
+        enterpriseContext: enterpriseContextMetadata,
+        retrievalDiagnostics,
+        confidence: deniedConfidence,
+        confidentiality: deniedConfidentiality,
+        observability: deniedObservability,
+      };
+    }
+
     if (dataAnswer.answered) {
       const ecOutput: ResolveOpsRequestOutput = {
         request: userRequest,

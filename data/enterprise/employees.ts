@@ -164,8 +164,18 @@ export function getEmployeesByRole(role: EmployeeRole): Employee[] {
  */
 export function findEmployeeByName(nameQuery: string): Employee | undefined {
   const normalized = nameQuery.toLowerCase().trim();
-  return employees.find(e => 
+
+  // Exact / short-query check (works when nameQuery IS a name, e.g. "Carlos Ruiz")
+  const exactMatch = employees.find(e =>
     e.name.toLowerCase().includes(normalized) ||
     e.email.toLowerCase().includes(normalized)
   );
+  if (exactMatch) return exactMatch;
+
+  // Token search: does the query string contain any name token (first/last name)?
+  // Minimum 3 chars to avoid false positives on short tokens.
+  return employees.find(e => {
+    const nameParts = e.name.toLowerCase().split(/\s+/);
+    return nameParts.some(part => part.length >= 3 && normalized.includes(part));
+  });
 }

@@ -88,7 +88,19 @@ function buildEmployeeResponse(
       };
     }
       
-    case 'ask_for_info':
+    case 'ask_for_info': {
+      const isAccessDenied = output.reviewPacket?.summary?.startsWith('Access restricted:');
+      if (isAccessDenied) {
+        return {
+          title: 'Access Restricted',
+          message: explanation,
+          status: 'not_allowed',
+          visibleCitations: [],
+          missingFields: [],
+          nextStep: 'Contact HR directly if you have a legitimate business need',
+          privacyNote: 'Access to other employees\u2019 leave data is restricted to managers and HR.',
+        };
+      }
       return {
         title: noPolicyFound ? 'Policy Not Found' : 'More Information Needed',
         message: noPolicyFound
@@ -102,6 +114,7 @@ function buildEmployeeResponse(
           : 'Please provide the requested information',
         confidenceNote,
       };
+    }
       
     case 'draft_action':
       if (risk === 'high' || context?.accessLevel === 'none') {
