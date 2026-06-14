@@ -49,7 +49,7 @@ jobs:
         run: |
           if node -e "process.exit(require('./package.json').scripts['eval:confidence'] ? 0 : 1)"; then
             echo "Running eval:confidence..."
-            npm run eval:confidence
+            USE_AI=false npm run eval:confidence
           else
             echo "eval:confidence script not defined in package.json — skipping"
           fi

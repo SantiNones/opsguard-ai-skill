@@ -44,11 +44,18 @@ export function calculateConfidence(
     reasons.push('No strong policy match found');
   }
 
-  // Factor 2: Citation count (policy grounding quality)
+  // Factor 2: Citation count (weighted by retrieval quality)
+  // Citations from low-quality retrieval are weak grounding signals.
   const citationCount = output.citations.length;
-  if (citationCount >= 2) {
+  if (citationCount >= 2 && retrievalConf === 'high') {
     score += 0.10;
     reasons.push(`${citationCount} policy rules cited`);
+  } else if (citationCount >= 2 && retrievalConf === 'medium') {
+    score += 0.05;
+    reasons.push(`${citationCount} policy rules cited (partial match)`);
+  } else if (citationCount >= 2 && retrievalConf === 'low') {
+    // Weak citations from low-quality retrieval — no boost
+    reasons.push(`${citationCount} policy rules retrieved (low confidence)`);
   } else if (citationCount === 1) {
     score += 0.05;
     reasons.push('1 policy rule cited');
@@ -108,9 +115,11 @@ export function isNoPolicyFound(
   citationCount: number,
   retrievalConfidence: 'low' | 'medium' | 'high' | undefined
 ): boolean {
+  // Policy is considered "not found" when:
+  // - overall confidence is low, AND
+  // - either no citations exist OR retrieval was too weak to trust them
   return (
     confidenceLabel === 'low' &&
-    citationCount === 0 &&
-    (retrievalConfidence === 'low' || retrievalConfidence === undefined)
+    (citationCount === 0 || retrievalConfidence === 'low' || retrievalConfidence === undefined)
   );
 }

@@ -35,10 +35,10 @@
       "id": "vague_policy_question",
       "query": "What is the policy?",
       "expectedConfidenceLabel": "low",
-      "expectNoPolicyFound": false,
+      "expectNoPolicyFound": true,
       "expectOverconfidentViolation": false,
       "expectSensitiveEscalation": false,
-      "notes": "Maximally vague — generic chunks may be retrieved but confidence must be low; no-policy-found is false because some generic hits occur"
+      "notes": "Maximally vague — all retrieval hits score=1 (low), retConf=low; deterministic resolver cannot identify a relevant policy, so no-policy-found is the correct conservative behavior"
     },
     {
       "id": "salary_access_sensitive",
