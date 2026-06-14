@@ -72,6 +72,7 @@ export interface EmployeeResponse {
   missingFields: string[];
   nextStep: string;
   privacyNote?: string;
+  confidenceNote?: string;
 }
 
 // HR/Ops-facing review packet
@@ -92,4 +93,7 @@ export interface HRReviewPacket {
     targetEmployee?: string;
     hasRestrictedData: boolean;
   };
+  confidenceLabel?: 'low' | 'medium' | 'high';
+  confidenceScore?: number;
+  confidenceReasons?: string[];
 }

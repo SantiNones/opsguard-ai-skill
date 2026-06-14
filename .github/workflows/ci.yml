@@ -44,3 +44,13 @@ jobs:
             echo "eval:retrieval script not defined in package.json — skipping"
           fi
         shell: bash
+
+      - name: Confidence evals (deterministic, no OpenAI)
+        run: |
+          if node -e "process.exit(require('./package.json').scripts['eval:confidence'] ? 0 : 1)"; then
+            echo "Running eval:confidence..."
+            USE_AI=false npm run eval:confidence
+          else
+            echo "eval:confidence script not defined in package.json — skipping"
+          fi
+        shell: bash

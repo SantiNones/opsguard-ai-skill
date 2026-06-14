@@ -683,7 +683,81 @@ Current results: Recall@5 = 100%, MRR = 0.958, 0 forbidden violations.
 
 ---
 
-## 14. Changelog
+## 14. Confidence, Confidentiality, and Observability
+
+### Confidence Model (`lib/confidence.ts`)
+
+Confidence is separate from risk. Risk describes the stakes of the request; confidence describes how certain the system is about its own answer quality.
+
+**Inputs → score (0–1):**
+- `retrievalDiagnostics.retrievalConfidence`: high=+0.25, medium=+0.10, low=−0.20
+- `citations.length`: ≥2 → +0.10, 1 → +0.05, 0 → −0.15
+- `route + risk`: answer_directly + low risk → +0.10; ask_for_info → −0.10
+- Fallback mode: AI failure → −0.10
+- Access level: none → −0.10; redactions > 0 → −0.05
+
+Labels: high (≥0.70), medium (0.45–0.69), low (<0.45)
+
+**No-policy-found detection:** `isNoPolicyFound(label, citationCount, retrievalConf)` gates on all three signals. When true, the employee response changes title to "Policy Not Found" and redirects to HR contact. This prevents the system from producing confident-sounding answers on topics outside its policy KB.
+
+**ConfidenceResult** is added to `ResolveResult` and passed through to `buildDualAudienceResponse` to enable response-level adaptation.
+
+### Confidentiality Diagnostics (`lib/privacy/confidentiality.ts`)
+
+Detects sensitive data categories in the query via regex pattern matching — no real employee data values are inspected or exposed.
+
+**Categories:** `payroll`, `salary`, `compensation`, `bank_account`, `personal_identifier`, `cross_border`, `email`, `phone`, `address`
+
+**Level rules:**
+- `high`: payroll/salary/bank_account/compensation detected OR ≥3 redactions OR accessLevel=none
+- `medium`: PII or cross-border keywords OR any redactions
+- `low`: no sensitive signals
+
+`restrictedFields` is inferred from the combination of detected categories and redaction count — not from actual data values.
+
+### Observability Metadata (`lib/observability.ts`)
+
+A per-request `ObservabilityMetadata` record is computed after resolution and included in both the API response and the UI ObservabilityPanel:
+
+```typescript
+interface ObservabilityMetadata {
+  requestId: string;           // req_<timestamp36>_<rand5>
+  createdAt: string;           // ISO 8601
+  resolverMode: 'ai' | 'fallback' | 'deterministic';
+  fallbackReason?: string;
+  latencyMs: number;
+  modelName?: string;          // only when resolverMode === 'ai'
+  retrievalChunkCount: number;
+  estimatedContextTokens: number;
+  topRuleIds: string[];
+  confidenceLabel: 'low' | 'medium' | 'high';
+  confidentialityLevel: 'low' | 'medium' | 'high';
+  redactionsApplied: number;
+  requiresHumanReview: boolean;
+  tokenUsageEstimate: {
+    inputTokensEstimate: number;
+    outputTokensEstimate: number;
+    estimatedCostUsd: number;   // 0 for deterministic/fallback
+  };
+}
+```
+
+Token estimates: input = estimatedContextTokens + 200 (system prompt overhead), output = 200 (typical structured JSON). Cost uses published GPT-4o-mini rates; 0 for non-AI runs.
+
+### Confidence Eval Suite (`evals/confidence-evals.json`)
+
+8 deterministic eval cases covering:
+- Out-of-domain queries (benefits, equity, legal) → expect low confidence + no-policy-found
+- Maximally vague queries → expect low confidence, no overconfident violation
+- Sensitive data access (colleague's salary) → expect escalation
+- High-confidence known policies (vacation carryover) → expect high
+- Medium-confidence cases (payroll cutoff, overtime correction)
+
+Run: `npm run eval:confidence`
+
+---
+
+## 15. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
@@ -691,3 +765,4 @@ Current results: Recall@5 = 100%, MRR = 0.958, 0 forbidden violations.
 | 0.4.0 | June 2026 | Enterprise context and access control |
 | 0.5.0 | June 2026 | Dual audience UX with employee/HR responses |
 | 0.6.0 | June 2026 | RAG quality layer: metadata, context budget, retrieval evals |
+| 0.7.0 | June 2026 | Confidence modeling, confidentiality diagnostics, observability metadata, no-policy-found handling, eval:confidence |

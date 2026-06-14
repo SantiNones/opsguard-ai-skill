@@ -51,16 +51,30 @@ git push
 
 ---
 
-## Commands Requiring Explicit User Approval
+## Safe Commands (propose normally, user approves)
+These can be proposed without extra ceremony:
+
+- `git status`, `git diff`, `git log`
+- `git checkout` / branch creation
+- `git push` to a sprint branch
+- `npm run lint`
+- `npm run build`
+- `USE_AI=false npm run eval`
+- `npm run eval:retrieval`
+
+## Commands Requiring Explicit Extra Confirmation
 Do not run these without an explicit "yes, run it":
 
 - `rm -rf`
 - `git reset --hard`
 - `git clean -fd`
 - `npm audit fix --force`
-- Deleting major folders or files
-- Changing the package manager
-- Modifying `.env` files
+- Modifying `.env.local` / `.env` files
 - Changing eval expectations (pass thresholds, expected routes, citations)
 - Weakening safety or access-control rules
 - Pushing directly to `main`
+
+## Terminal Approval Handling
+If a basic safe command is canceled **twice** due to terminal approval issues,
+stop retrying. Provide ONE exact command block for the user to run manually,
+then verify from the pasted output.

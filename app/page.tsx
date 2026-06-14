@@ -14,6 +14,9 @@ import { EmployeeResponseComponent } from '@/components/response/EmployeeRespons
 import { HRReviewPacketComponent } from '@/components/response/HRReviewPacket';
 import { ViewModeToggle } from '@/components/response/ViewModeToggle';
 import { RetrievalDiagnostics } from '@/components/system/RetrievalDiagnostics';
+import { ConfidencePanel } from '@/components/system/ConfidencePanel';
+import { ConfidentialityPanel } from '@/components/system/ConfidentialityPanel';
+import { ObservabilityPanel } from '@/components/system/ObservabilityPanel';
 import { mockResolve, exampleRequests } from '@/lib/mockResolve';
 import { ResolveOpsRequestOutput, EmployeeResponse, HRReviewPacket } from '@/lib/types';
 import { employees } from '@/data/enterprise/employees';
@@ -44,6 +47,38 @@ export default function Home() {
     totalCandidateCount: number;
     excludedForBudget: string[];
   } | null>(null);
+  const [confidenceData, setConfidenceData] = useState<{
+    confidenceScore: number;
+    confidenceLabel: 'low' | 'medium' | 'high';
+    confidenceReasons: string[];
+  } | null>(null);
+  const [confidentialityData, setConfidentialityData] = useState<{
+    sensitiveDataDetected: boolean;
+    sensitiveCategories: string[];
+    redactionsApplied: number;
+    restrictedFields: string[];
+    confidentialityLevel: 'low' | 'medium' | 'high';
+  } | null>(null);
+  const [observabilityData, setObservabilityData] = useState<{
+    requestId: string;
+    createdAt: string;
+    resolverMode: 'ai' | 'fallback' | 'deterministic';
+    fallbackReason?: string;
+    latencyMs: number;
+    modelName?: string;
+    retrievalChunkCount: number;
+    estimatedContextTokens: number;
+    topRuleIds: string[];
+    confidenceLabel: 'low' | 'medium' | 'high';
+    confidentialityLevel: 'low' | 'medium' | 'high';
+    redactionsApplied: number;
+    requiresHumanReview: boolean;
+    tokenUsageEstimate: {
+      inputTokensEstimate: number;
+      outputTokensEstimate: number;
+      estimatedCostUsd: number;
+    };
+  } | null>(null);
 
   const handleAnalyze = async () => {
     if (!request.trim()) return;
@@ -51,6 +86,9 @@ export default function Home() {
     setIsAnalyzing(true);
     setError(null);
     setEnterpriseContextData(null);
+    setConfidenceData(null);
+    setConfidentialityData(null);
+    setObservabilityData(null);
     
     try {
       // Call the API with actor context
@@ -80,6 +118,15 @@ export default function Home() {
         }
         if (result.data.retrievalDiagnostics) {
           setRetrievalDiagnosticsData(result.data.retrievalDiagnostics);
+        }
+        if (result.data.confidence) {
+          setConfidenceData(result.data.confidence);
+        }
+        if (result.data.confidentiality) {
+          setConfidentialityData(result.data.confidentiality);
+        }
+        if (result.data.observability) {
+          setObservabilityData(result.data.observability);
         }
       } else {
         // API error - fallback to local mock resolver
@@ -170,8 +217,11 @@ export default function Home() {
             {/* Right: Action Panel */}
             <div className="space-y-6">
               <ActionPacket output={output} />
+              <ConfidencePanel confidence={confidenceData} />
+              <ConfidentialityPanel confidentiality={confidentialityData} />
               <EnterpriseContext context={enterpriseContextData} />
               <RetrievalDiagnostics diagnostics={retrievalDiagnosticsData} />
+              <ObservabilityPanel observability={observabilityData} />
               <SystemDetails output={output} />
             </div>
           </div>

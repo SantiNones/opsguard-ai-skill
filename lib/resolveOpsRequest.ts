@@ -3,6 +3,9 @@ import { retrieveWithDiagnostics, PolicyChunk, findRuleById, RetrievalDiagnostic
 import { applySafetyRules, quickSafetyCheck } from './safetyRules';
 import { aiResolve, isAIEnabled } from './aiResolve';
 import { buildEnterpriseContext, formatEnterpriseContextForResolver, getContextSummary } from './enterpriseContext';
+import { calculateConfidence, ConfidenceResult } from './confidence';
+import { assessConfidentiality, ConfidentialityMetadata } from './privacy/confidentiality';
+import { buildObservabilityMetadata, ObservabilityMetadata } from './observability';
 
 export interface ResolveResult {
   output: ResolveOpsRequestOutput;
@@ -13,6 +16,9 @@ export interface ResolveResult {
   fallbackReason?: string;
   enterpriseContext?: EnterpriseContextMetadata;
   retrievalDiagnostics?: RetrievalDiagnostics;
+  confidence?: ConfidenceResult;
+  confidentiality?: ConfidentialityMetadata;
+  observability?: ObservabilityMetadata;
 }
 
 /**
@@ -119,6 +125,30 @@ export async function resolveOpsRequest(
 
   const processingTimeMs = Date.now() - startTime;
 
+  // Step 4: Compute confidence, confidentiality, and observability
+  const confidence = calculateConfidence(
+    safeOutput,
+    retrievalDiagnostics,
+    enterpriseContextMetadata,
+    mode,
+    fallbackReason
+  );
+
+  const confidentiality = assessConfidentiality(
+    userRequest,
+    enterpriseContextMetadata
+  );
+
+  const observability = buildObservabilityMetadata({
+    latencyMs: processingTimeMs,
+    mode,
+    fallbackReason,
+    retrievalDiagnostics,
+    confidence,
+    confidentiality,
+    requiresHumanReview: safeOutput.needsReview,
+  });
+
   return {
     output: safeOutput,
     retrievedChunks,
@@ -128,6 +158,9 @@ export async function resolveOpsRequest(
     fallbackReason,
     enterpriseContext: enterpriseContextMetadata,
     retrievalDiagnostics,
+    confidence,
+    confidentiality,
+    observability,
   };
 }
 

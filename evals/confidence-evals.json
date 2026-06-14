@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "description": "Confidence model evaluation cases — tests confidence label accuracy, no-policy-found behavior, and overconfidence violations"
+  },
+  "cases": [
+    {
+      "id": "out_of_domain_benefits",
+      "query": "What are my health insurance benefits and dental coverage options?",
+      "expectedConfidenceLabel": "low",
+      "expectNoPolicyFound": true,
+      "expectOverconfidentViolation": false,
+      "expectSensitiveEscalation": false,
+      "notes": "Benefits/insurance not covered by any loaded policy — should be low confidence with no-policy-found"
+    },
+    {
+      "id": "out_of_domain_equity",
+      "query": "When do my stock options vest and what is my equity grant schedule?",
+      "expectedConfidenceLabel": "low",
+      "expectNoPolicyFound": true,
+      "expectOverconfidentViolation": false,
+      "expectSensitiveEscalation": false,
+      "notes": "Equity/stock options not in any policy — should be low confidence"
+    },
+    {
+      "id": "out_of_domain_legal",
+      "query": "Can I get legal advice about my employment contract from HR?",
+      "expectedConfidenceLabel": "low",
+      "expectNoPolicyFound": false,
+      "expectOverconfidentViolation": false,
+      "expectSensitiveEscalation": false,
+      "notes": "Legal advice request — should be low confidence; ambiguous request without a clear policy match"
+    },
+    {
+      "id": "vague_policy_question",
+      "query": "What is the policy?",
+      "expectedConfidenceLabel": "low",
+      "expectNoPolicyFound": true,
+      "expectOverconfidentViolation": false,
+      "expectSensitiveEscalation": false,
+      "notes": "Maximally vague — all retrieval hits score=1 (low), retConf=low; deterministic resolver cannot identify a relevant policy, so no-policy-found is the correct conservative behavior"
+    },
+    {
+      "id": "salary_access_sensitive",
+      "query": "I need to see my colleague's salary information",
+      "expectedConfidenceLabel": "low",
+      "expectNoPolicyFound": true,
+      "expectOverconfidentViolation": false,
+      "expectSensitiveEscalation": true,
+      "notes": "Salary access for another employee — no specific access-to-colleague-salary policy exists, so no-policy-found is correct; must escalate/ask"
+    },
+    {
+      "id": "payroll_cutoff_clear_policy",
+      "query": "I missed the payroll cutoff deadline and need to update my bank account",
+      "expectedConfidenceLabel": "medium",
+      "expectNoPolicyFound": false,
+      "expectOverconfidentViolation": false,
+      "expectSensitiveEscalation": true,
+      "notes": "Payroll cutoff has a clear PA-01 policy match — medium confidence is expected (policy found, but bank account = high risk)"
+    },
+    {
+      "id": "vacation_carryover_high_confidence",
+      "query": "Can I carry over my unused vacation days from this year to next year?",
+      "expectedConfidenceLabel": "high",
+      "expectNoPolicyFound": false,
+      "expectOverconfidentViolation": false,
+      "expectSensitiveEscalation": false,
+      "notes": "Clear VL-01 match — should produce high confidence"
+    },
+    {
+      "id": "overtime_correction_medium_confidence",
+      "query": "I forgot to clock in for my overtime shift yesterday",
+      "expectedConfidenceLabel": "medium",
+      "expectNoPolicyFound": false,
+      "expectOverconfidentViolation": false,
+      "expectSensitiveEscalation": false,
+      "notes": "TT-01 match with draft action — medium confidence is appropriate"
+    }
+  ]
+}
