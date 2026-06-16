@@ -150,7 +150,7 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
     if (forbiddenText.length > 0) {
       errors.push(`Forbidden answer text present: ${forbiddenText.join(', ')}`);
     }
-    
+
     const passed = routeMatch && riskMatch && reviewMatch && citationsMatch && answerSourceMatch && textMatch;
     
     return {
