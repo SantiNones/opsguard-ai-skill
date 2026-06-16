@@ -69,6 +69,17 @@ Carryover = min(Unused Days, 5)
 
 ---
 
+### VL-05: Annual Vacation Entitlement
+
+**Rule:** Full-time employees are entitled to 23 paid vacation days per calendar year.
+
+**Details:**
+- Individual entitlements may vary by contract, seniority, or local employment agreement
+- Part-time employees may receive pro-rated vacation entitlement
+- Remaining balance is tracked separately in the HR system
+
+---
+
 ## Examples
 
 ### Standard Carryover

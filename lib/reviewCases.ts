@@ -1,5 +1,5 @@
 import { EmployeeRole } from '@/data/enterprise/employees';
-import { RiskLevel, Route } from '@/lib/types';
+import { Citation, RiskLevel, Route } from '@/lib/types';
 
 export type ReviewCaseStatus = 'review_required' | 'escalated' | 'answered' | 'access_restricted' | 'resolved';
 
@@ -15,10 +15,13 @@ export interface CreatedReviewCase {
   route: Route;
   status: ReviewCaseStatus;
   owner: string;
+  ownerRole?: string;
+  ownerDepartment?: string;
   type: string;
   summary: string;
   timestamp: string;
   time: string;
+  policyReferences?: Citation[];
   source: 'created_from_request_console';
 }
 

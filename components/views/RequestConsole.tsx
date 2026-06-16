@@ -174,7 +174,7 @@ export function RequestConsole({
               <select
                 value={selectedActorId}
                 onChange={(e) => onActorChange(e.target.value)}
-                className="appearance-none og-btn-ghost pl-3 pr-8 py-2 text-sm cursor-pointer w-[220px] sm:w-[280px] max-w-full"
+                className="absolute inset-0 z-10 opacity-0 cursor-pointer w-full"
                 aria-label="Acting persona"
               >
                 {employees.map((emp) => (
@@ -184,11 +184,16 @@ export function RequestConsole({
                 ))}
               </select>
               {selectedActor && (
-                <span className="pointer-events-none absolute left-3 top-[2px] text-[10px] font-bold uppercase tracking-[0.11em] text-stone-400">
-                  {actorRoleLabel[selectedActor.role]}{selectedActor.department ? ` · ${selectedActor.department}` : ''}
-                </span>
+                <div className="pointer-events-none og-btn-ghost flex flex-col items-start justify-center gap-1 pl-4 pr-10 py-2.5 min-h-[44px] w-[260px] sm:w-[310px] max-w-[calc(100vw-3rem)]">
+                  <span className="text-[10px] leading-none font-bold uppercase tracking-[0.16em] text-stone-400">
+                    {actorRoleLabel[selectedActor.role]}{selectedActor.department ? ` · ${selectedActor.department}` : ''}
+                  </span>
+                  <span className="block max-w-full truncate text-sm leading-tight font-bold text-stone-800">
+                    {selectedActor.name} — {actorRoleLabel[selectedActor.role]}
+                  </span>
+                </div>
               )}
-              <ChevronDownIcon className="w-4 h-4 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDownIcon className="w-4 h-4 text-stone-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
             <button className="w-9 h-9 rounded-xl border border-[#f0e8e4] bg-white flex items-center justify-center text-stone-500 hover:text-brand-600 hover:border-brand-200 transition-colors">
               <BellIcon className="w-[18px] h-[18px]" />

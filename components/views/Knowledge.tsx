@@ -11,7 +11,12 @@ interface PolicyCategory {
   icon: React.ReactNode;
   tint: string;
   updated: string;
-  rules: string[];
+  rules: {
+    id: string;
+    title: string;
+    text: string;
+    tags: string[];
+  }[];
 }
 
 const categories: PolicyCategory[] = [
@@ -22,7 +27,12 @@ const categories: PolicyCategory[] = [
     icon: <ClockIcon className="w-5 h-5" />,
     tint: 'bg-rose-50 text-rose-600',
     updated: 'Updated May 2026',
-    rules: ['TT-01 Missed clock-ins', 'TT-02 Manager approval', 'TT-03 Overtime corrections', 'TT-04 Audit trail'],
+    rules: [
+      { id: 'TT-01', title: 'Missed clock-in correction', text: 'Missed clock-ins must be corrected through the time tracking workflow and include the original scheduled hours.', tags: ['time', 'correction'] },
+      { id: 'TT-02', title: 'Manager approval', text: 'Retroactive time corrections require direct manager approval before payroll processing.', tags: ['manager', 'approval'] },
+      { id: 'TT-03', title: 'Overtime approval', text: 'Overtime corrections require additional review before payroll can apply the adjustment.', tags: ['overtime', 'payroll'] },
+      { id: 'TT-04', title: 'Audit trail', text: 'All time corrections must retain an audit trail with timestamp, requester, and approver.', tags: ['audit', 'compliance'] },
+    ],
   },
   {
     name: 'Payroll Policy',
@@ -31,16 +41,27 @@ const categories: PolicyCategory[] = [
     icon: <PayrollIcon className="w-5 h-5" />,
     tint: 'bg-amber-50 text-amber-600',
     updated: 'Updated Jun 2026',
-    rules: ['PA-01 Cutoff dates', 'PA-02 Evidence required', 'PA-03 Bank changes', 'PA-04 Compensation'],
+    rules: [
+      { id: 'PA-01', title: 'Payroll cutoff dates', text: 'Changes near payroll cutoff require payroll specialist review and may need manual handling.', tags: ['cutoff', 'payroll'] },
+      { id: 'PA-02', title: 'Evidence required', text: 'Payroll and compensation adjustments require supporting documentation before approval.', tags: ['evidence', 'approval'] },
+      { id: 'PA-03', title: 'Payroll entity rules', text: 'Cross-border work may create payroll entity, tax, or compliance restrictions.', tags: ['cross-border', 'tax'] },
+      { id: 'PA-04', title: 'Sensitive payroll data', text: 'Payroll data is restricted and may only be accessed by authorized roles.', tags: ['sensitive', 'access'] },
+    ],
   },
   {
     name: 'Leave Policy',
     description: 'Vacation, sick leave, public holidays, and leave balance.',
-    count: 6,
+    count: 5,
     icon: <CalendarIcon className="w-5 h-5" />,
     tint: 'bg-emerald-50 text-emerald-600',
     updated: 'Updated Apr 2026',
-    rules: ['VL-01 Carryover', 'VL-02 Approval notice', 'VL-03 Balance inquiries', 'VL-04 Sick leave'],
+    rules: [
+      { id: 'VL-01', title: 'Vacation Carryover', text: 'Up to 5 unused vacation days may be carried over per calendar year. Carried days expire March 31 of the following year.', tags: ['carryover', 'vacation'] },
+      { id: 'VL-02', title: 'Leave Approval', text: 'Vacation requests require manager approval with 2 weeks notice, with limited emergency exceptions.', tags: ['approval', 'notice'] },
+      { id: 'VL-03', title: 'Leave Balance', text: 'Employees cannot take vacation with a negative balance. Remaining balance is answered from permissioned HR data.', tags: ['balance', 'live data'] },
+      { id: 'VL-04', title: 'PTO vs Vacation', text: 'This policy applies only to vacation days. PTO, where offered, follows a separate PTO policy.', tags: ['pto', 'vacation'] },
+      { id: 'VL-05', title: 'Annual Vacation Entitlement', text: 'Full-time employees are entitled to 23 paid vacation days per calendar year. Individual entitlements may vary by contract, seniority, or local employment agreement.', tags: ['annual', 'entitlement'] },
+    ],
   },
   {
     name: 'Remote Work Policy',
@@ -49,7 +70,11 @@ const categories: PolicyCategory[] = [
     icon: <GlobeIcon className="w-5 h-5" />,
     tint: 'bg-sky-50 text-sky-600',
     updated: 'Updated Mar 2026',
-    rules: ['RW-01 Domestic remote', 'RW-02 Cross-border work', 'RW-03 Travel'],
+    rules: [
+      { id: 'RW-01', title: 'Domestic remote work', text: 'Domestic remote work may be approved when role expectations and equipment requirements are met.', tags: ['remote', 'domestic'] },
+      { id: 'RW-02', title: 'Cross-border work', text: 'International remote work requires prior review because tax, payroll entity, and employment law issues may apply.', tags: ['international', 'compliance'] },
+      { id: 'RW-03', title: 'Travel overlap', text: 'Work performed while traveling may need HRBP review when location or duration changes employment obligations.', tags: ['travel', 'location'] },
+    ],
   },
   {
     name: 'Onboarding Policy',
@@ -58,7 +83,11 @@ const categories: PolicyCategory[] = [
     icon: <EmployeeIcon className="w-5 h-5" />,
     tint: 'bg-violet-50 text-violet-600',
     updated: 'Updated May 2026',
-    rules: ['ON-01 Pre-start checklist', 'ON-02 Documents', 'ON-03 First week'],
+    rules: [
+      { id: 'ON-01', title: 'Pre-start checklist', text: 'New hires must complete pre-start documents and required setup before their first day.', tags: ['documents', 'pre-start'] },
+      { id: 'ON-02', title: 'Manager onboarding tasks', text: 'Managers must confirm onboarding plans, equipment readiness, and first-week schedule.', tags: ['manager', 'new hire'] },
+      { id: 'ON-03', title: 'First-week guidance', text: 'First-week onboarding includes orientation, policy acknowledgement, and required training.', tags: ['training', 'orientation'] },
+    ],
   },
 ];
 
@@ -66,9 +95,21 @@ export function Knowledge() {
   const [query, setQuery] = useState('');
   const [openName, setOpenName] = useState<string | null>(null);
 
-  const filtered = categories.filter(
-    (c) => !query || c.name.toLowerCase().includes(query.toLowerCase()) || c.description.toLowerCase().includes(query.toLowerCase())
-  );
+  const normalizedQuery = query.toLowerCase();
+  const filtered = categories
+    .map((category) => ({
+      ...category,
+      rules: category.rules.filter((rule) =>
+        !normalizedQuery ||
+        category.name.toLowerCase().includes(normalizedQuery) ||
+        category.description.toLowerCase().includes(normalizedQuery) ||
+        rule.id.toLowerCase().includes(normalizedQuery) ||
+        rule.title.toLowerCase().includes(normalizedQuery) ||
+        rule.text.toLowerCase().includes(normalizedQuery) ||
+        rule.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery))
+      ),
+    }))
+    .filter((category) => category.rules.length > 0);
 
   return (
     <>
@@ -119,18 +160,28 @@ export function Knowledge() {
                       <p className="mt-1 text-[11px] font-medium text-stone-400">{cat.updated}</p>
                     </div>
                     <span className="shrink-0 text-xs font-medium text-brand-600 bg-brand-50 px-2.5 py-1 rounded-full">
-                      {cat.count} policies
+                      {cat.rules.length} rules
                     </span>
                   </button>
                   {open && (
                     <div className="px-5 pb-4 pt-1 border-t border-[#eadeda] og-fade-up">
-                      <div className="grid sm:grid-cols-2 gap-2 mt-3">
-                        {cat.rules.map((r) => (
-                          <div key={r} className="text-sm text-stone-700 bg-[#fff7f5] rounded-xl px-3 py-2.5 border border-[#eadeda]">
-                            <span className="text-[11px] font-mono font-bold text-brand-700 bg-white border border-brand-100 rounded-md px-1.5 py-0.5 mr-2">
-                              {r.split(' ')[0]}
-                            </span>
-                            {r.split(' ').slice(1).join(' ')}
+                      <div className="grid gap-2.5 mt-3">
+                        {cat.rules.map((rule) => (
+                          <div key={rule.id} className="text-sm text-stone-700 bg-[#fff7f5] rounded-xl px-3 py-3 border border-[#eadeda]">
+                            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                              <span className="text-[11px] font-mono font-bold text-brand-700 bg-white border border-brand-100 rounded-md px-1.5 py-0.5">
+                                {rule.id}
+                              </span>
+                              <p className="font-black text-stone-900">{rule.title}</p>
+                            </div>
+                            <p className="text-xs leading-relaxed text-stone-600">{rule.text}</p>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {rule.tags.map((tag) => (
+                                <span key={tag} className="text-[10px] font-bold uppercase tracking-wide text-stone-400 bg-white/80 border border-[#eadeda] rounded-full px-2 py-0.5">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         ))}
                       </div>

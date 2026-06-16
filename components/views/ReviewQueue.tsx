@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { EmployeeRole, getDirectReports } from '@/data/enterprise/employees';
 import { CreatedReviewCase, ReviewCaseStatus } from '@/lib/reviewCases';
+import { Citation } from '@/lib/types';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { SearchIcon, ArrowRightIcon } from '@/components/ui/Icons';
 
@@ -12,6 +13,8 @@ interface ReviewCase {
   requester: string;
   risk: 'low' | 'medium' | 'high' | 'restricted';
   owner: string;
+  ownerRole?: string;
+  ownerDepartment?: string;
   type: string;
   time: string;
   status: ReviewCaseStatus;
@@ -21,6 +24,7 @@ interface ReviewCase {
   targetEmployeeId?: string;
   route?: CreatedReviewCase['route'];
   timestamp?: string;
+  policyReferences?: Citation[];
 }
 
 const mockCases: ReviewCase[] = [
@@ -136,6 +140,8 @@ function toQueueCase(reviewCase: CreatedReviewCase): ReviewCase {
     requester: reviewCase.requester,
     risk: reviewCase.risk,
     owner: reviewCase.owner,
+    ownerRole: reviewCase.ownerRole,
+    ownerDepartment: reviewCase.ownerDepartment,
     type: reviewCase.type,
     time: reviewCase.time,
     status: reviewCase.status,
@@ -145,7 +151,21 @@ function toQueueCase(reviewCase: CreatedReviewCase): ReviewCase {
     targetEmployeeId: reviewCase.targetEmployeeId,
     route: reviewCase.route,
     timestamp: reviewCase.timestamp,
+    policyReferences: reviewCase.policyReferences,
   };
+}
+
+function formatCreatedAt(timestamp?: string): string | null {
+  if (!timestamp) return null;
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return null;
+  return `Created ${date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })}`;
 }
 
 export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCreatedCase, onDeleteCreatedCase }: ReviewQueueProps) {
@@ -293,7 +313,14 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
                           {c.risk === 'restricted' ? 'Restricted' : c.risk.charAt(0).toUpperCase() + c.risk.slice(1)}
                         </span>
                       </td>
-                      <td className="px-3 py-3.5 text-stone-600 hidden md:table-cell">{c.owner}</td>
+                      <td className="px-3 py-3.5 text-stone-600 hidden md:table-cell">
+                        <p className="font-semibold text-stone-700">{c.owner}</p>
+                        {c.ownerRole && (
+                          <p className="text-[11px] font-medium text-stone-400">
+                            {c.ownerRole}{c.ownerDepartment ? ` · ${c.ownerDepartment}` : ''}
+                          </p>
+                        )}
+                      </td>
                       <td className="px-3 py-3.5 text-stone-600 hidden lg:table-cell">{c.type}</td>
                       <td className="px-3 py-3.5">
                         <span className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-medium border ${statusStyles[c.status]}`}>
@@ -330,6 +357,11 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
                   <div className="rounded-xl bg-white/70 border border-[#eadeda] p-3">
                     <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Owner</p>
                     <p className="text-stone-800 font-bold">{selected.owner}</p>
+                    {selected.ownerRole && (
+                      <p className="text-xs font-semibold text-stone-500 mt-0.5">
+                        {selected.ownerRole}{selected.ownerDepartment ? ` · ${selected.ownerDepartment}` : ''}
+                      </p>
+                    )}
                   </div>
                   <div className="rounded-xl bg-white/70 border border-[#eadeda] p-3">
                     <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Type</p>
@@ -357,6 +389,9 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
                 <p className="text-xs font-mono text-stone-400 mb-1">{openCase.id}</p>
                 <h3 className="text-xl font-black tracking-tight text-stone-950">{openCase.request}</h3>
                 <p className="text-sm text-stone-500 mt-1">{openCase.requester} · {openCase.time}</p>
+                {formatCreatedAt(openCase.timestamp) && (
+                  <p className="text-xs font-semibold text-stone-400 mt-1">{formatCreatedAt(openCase.timestamp)}</p>
+                )}
               </div>
               <button
                 onClick={() => setOpenCase(null)}
@@ -373,6 +408,11 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
               <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3">
                 <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Owner</p>
                 <p className="text-sm font-bold text-stone-900">{openCase.owner}</p>
+                {openCase.ownerRole && (
+                  <p className="text-xs font-semibold text-stone-500 mt-0.5">
+                    {openCase.ownerRole}{openCase.ownerDepartment ? ` · ${openCase.ownerDepartment}` : ''}
+                  </p>
+                )}
               </div>
               <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3">
                 <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Status</p>
@@ -386,6 +426,26 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
             <div className="rounded-2xl bg-white/75 border border-[#eadeda] p-4 mb-3">
               <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-1">Summary</p>
               <p className="text-sm text-stone-700 leading-relaxed">{openCase.summary}</p>
+            </div>
+            <div className="rounded-2xl bg-white/75 border border-[#eadeda] p-4 mb-3">
+              <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-2">Policy references</p>
+              {openCase.policyReferences && openCase.policyReferences.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {openCase.policyReferences.slice(0, 4).map((ref) => (
+                    <div key={ref.code} className="flex gap-2 text-sm">
+                      <span className="font-mono font-bold text-brand-700 bg-brand-50 border border-brand-100 rounded-md px-1.5 py-0.5 h-fit">
+                        {ref.code}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-bold text-stone-800">{ref.title}</p>
+                        <p className="text-xs text-stone-500 line-clamp-2">{ref.excerpt}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs font-medium text-stone-400">No policy references captured for this case.</p>
+              )}
             </div>
             <div className="rounded-2xl bg-brand-50/70 border border-brand-100 p-4">
               <p className="text-[11px] text-brand-500 uppercase tracking-wide mb-1">Recommended action</p>

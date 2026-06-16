@@ -453,8 +453,8 @@ function createVacationEntitlementOutput(
   request: string,
   citations: Citation[]
 ): ResolveOpsRequestOutput {
-  const vacationCitations = citations.filter(c => c.code.startsWith('VL-'));
-  const finalCitations = vacationCitations.length > 0 ? vacationCitations.slice(0, 2) : citations.slice(0, 2);
+  const vl05 = citations.find(c => c.code === 'VL-05');
+  const finalCitations = vl05 ? [vl05] : citations.filter(c => c.code.startsWith('VL-')).slice(0, 2);
 
   return {
     request,
@@ -462,11 +462,11 @@ function createVacationEntitlementOutput(
     route: 'answer_directly',
     confidence: 'medium',
     needsReview: false,
-    explanation: 'Vacation entitlement question routed as policy guidance, not a live balance lookup.',
+    explanation: 'Full-time employees are entitled to 23 paid vacation days per calendar year. Individual entitlements may vary by contract, seniority, or local employment agreement.',
     reasoning: [
       'Query asks about annual vacation allowance rather than remaining balance',
       'No employee-specific balance lookup required',
-      'Vacation policy contains entitlement and carryover guidance',
+      'Vacation policy contains a dedicated annual entitlement rule',
     ],
     citations: finalCitations,
     reviewPacket: {

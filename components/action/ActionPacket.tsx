@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { EmployeeRole } from '@/data/enterprise/employees';
+import { EmployeeRole, getEmployeeById } from '@/data/enterprise/employees';
 import { CreatedReviewCase, ReviewCaseStatus } from '@/lib/reviewCases';
 import { ResolveOpsRequestOutput } from '@/lib/types';
 import { copyToClipboard, formatSlackMessage, formatTicket } from '@/lib/copyPacket';
@@ -31,6 +31,13 @@ const routeLabel: Record<string, string> = {
   escalate: 'Escalate',
 };
 
+const roleLabel: Record<EmployeeRole, string> = {
+  employee: 'Employee',
+  manager: 'Manager',
+  hr_ops: 'HR Operations',
+  payroll_admin: 'Payroll Admin',
+};
+
 function statusFromOutput(output: ResolveOpsRequestOutput): ReviewCaseStatus {
   if (output.route === 'escalate') return 'escalated';
   if (output.needsReview || output.route === 'draft_action') return 'review_required';
@@ -42,6 +49,22 @@ function ownerFromOutput(output: ResolveOpsRequestOutput): string {
   if (output.route === 'escalate') return 'HR Operations';
   if (output.route === 'draft_action') return 'Manager / HR Operations';
   return '—';
+}
+
+function resolveOwnerDetails(output: ResolveOpsRequestOutput, actorId: string) {
+  const fallbackOwner = ownerFromOutput(output);
+  if (fallbackOwner === 'Direct Manager' || fallbackOwner === 'Manager / HR Operations') {
+    const actor = getEmployeeById(actorId);
+    const manager = actor?.managerId ? getEmployeeById(actor.managerId) : undefined;
+    if (manager) {
+      return {
+        owner: manager.name,
+        ownerRole: roleLabel[manager.role],
+        ownerDepartment: manager.department,
+      };
+    }
+  }
+  return { owner: fallbackOwner };
 }
 
 function typeFromOutput(output: ResolveOpsRequestOutput): string {
@@ -68,6 +91,7 @@ export function ActionPacket({
     [actorId, output, requestText]
   );
   const caseCreated = !!caseKey && createdCaseKey === caseKey;
+  const ownerDetails = output ? resolveOwnerDetails(output, actorId) : null;
 
   const handleCopy = async (format: 'slack' | 'ticket') => {
     if (!output) return;
@@ -91,11 +115,14 @@ export function ActionPacket({
       risk: output.risk,
       route: output.route,
       status: statusFromOutput(output),
-      owner: ownerFromOutput(output),
+      owner: ownerDetails?.owner ?? ownerFromOutput(output),
+      ownerRole: ownerDetails?.ownerRole,
+      ownerDepartment: ownerDetails?.ownerDepartment,
       type: typeFromOutput(output),
       summary: output.reviewPacket?.summary ?? output.explanation,
       timestamp: now.toISOString(),
       time: 'Just now',
+      policyReferences: output.citations,
       source: 'created_from_request_console',
     };
     onCreateReviewCase(reviewCase);
@@ -151,7 +178,12 @@ export function ActionPacket({
         </div>
         <div className="rounded-2xl bg-white/70 border border-[#eadeda] p-3.5">
           <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-1">Owner</p>
-          <p className="text-sm font-bold text-stone-800">{packet?.approver}</p>
+          <p className="text-sm font-bold text-stone-800">{ownerDetails?.owner ?? packet?.approver}</p>
+          {ownerDetails?.ownerRole && (
+            <p className="text-xs font-semibold text-stone-500 mt-0.5">
+              {ownerDetails.ownerRole}{ownerDetails.ownerDepartment ? ` · ${ownerDetails.ownerDepartment}` : ''}
+            </p>
+          )}
         </div>
         {packet?.missingFields && packet.missingFields.length > 0 && (
           <div>
