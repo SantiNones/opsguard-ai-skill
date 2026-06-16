@@ -28,12 +28,12 @@ export function SensitiveAmount({
         event.stopPropagation();
         onToggle();
       }}
-      className={`inline-flex items-center gap-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-300 ${className}`}
+      className={`inline-flex max-w-full items-center gap-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-300 ${className}`}
       aria-label={visible ? 'Hide sensitive payroll amount' : 'Reveal sensitive payroll amount'}
       aria-pressed={visible}
     >
       {visible && <EyeIcon className="w-3.5 h-3.5 text-stone-400" />}
-      <span className={`${amountSize} font-bold ${visible ? revealedClassName : 'text-stone-900 blur-[5px] select-none'}`}>
+      <span className={`min-w-0 break-all ${amountSize} font-bold ${visible ? revealedClassName : 'text-stone-900 blur-[5px] select-none'}`}>
         {value}
       </span>
     </button>
