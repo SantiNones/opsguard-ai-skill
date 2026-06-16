@@ -139,12 +139,9 @@ export function EmployeeResponseComponent({ response }: EmployeeResponseProps) {
                         </div>
                         <div className="text-right">
                           <div className="text-[11px] uppercase tracking-wide text-stone-400 font-semibold">Net pay</div>
-                          <SensitiveAmount
-                            value={formatCurrency(report.netSalary, report.currency)}
-                            visible={showPayrollAmounts}
-                            onToggle={() => setShowPayrollAmounts((current) => !current)}
-                            className="justify-end"
-                          />
+                          <span className={`block text-sm font-bold text-stone-900 ${showPayrollAmounts ? '' : 'blur-[5px] select-none'}`}>
+                            {formatCurrency(report.netSalary, report.currency)}
+                          </span>
                         </div>
                       </div>
                     </button>
@@ -266,7 +263,7 @@ export function EmployeeResponseComponent({ response }: EmployeeResponseProps) {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div className="p-3 rounded-xl bg-[#faf6f4] border border-[#f0e8e4]">
                   <div className="text-[11px] uppercase tracking-wide text-stone-400 font-semibold">Gross pay</div>
                   <SensitiveAmount
@@ -274,6 +271,7 @@ export function EmployeeResponseComponent({ response }: EmployeeResponseProps) {
                     visible={showPayrollAmounts}
                     onToggle={() => setShowPayrollAmounts((current) => !current)}
                     size="lg"
+                    className="max-w-full"
                   />
                 </div>
                 <div className="p-3 rounded-xl bg-[#faf6f4] border border-[#f0e8e4]">
@@ -283,6 +281,7 @@ export function EmployeeResponseComponent({ response }: EmployeeResponseProps) {
                     visible={showPayrollAmounts}
                     onToggle={() => setShowPayrollAmounts((current) => !current)}
                     size="lg"
+                    className="max-w-full"
                   />
                 </div>
                 <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
@@ -292,6 +291,7 @@ export function EmployeeResponseComponent({ response }: EmployeeResponseProps) {
                     visible={showPayrollAmounts}
                     onToggle={() => setShowPayrollAmounts((current) => !current)}
                     size="lg"
+                    className="max-w-full"
                     revealedClassName="text-emerald-800"
                   />
                 </div>
