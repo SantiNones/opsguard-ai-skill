@@ -45,6 +45,7 @@ interface EvalCase {
   expectedAnswerSource?: 'policy' | 'enterprise_context';
   mustIncludeText?: string[];
   mustNotIncludeText?: string[];
+  expectedPayrollReportCount?: number;
   notes?: string;
 }
 
@@ -57,6 +58,7 @@ interface EvalResult {
   citationsMatch: boolean;
   answerSourceMatch: boolean;
   textMatch: boolean;
+  payrollReportMatch: boolean;
   actualRoute: Route;
   actualRisk: RiskLevel;
   actualReview: boolean;
@@ -151,7 +153,13 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
       errors.push(`Forbidden answer text present: ${forbiddenText.join(', ')}`);
     }
 
-    const passed = routeMatch && riskMatch && reviewMatch && citationsMatch && answerSourceMatch && textMatch;
+    const payrollReportMatch = testCase.expectedPayrollReportCount === undefined ||
+      (output.payrollReports?.length ?? 0) === testCase.expectedPayrollReportCount;
+    if (!payrollReportMatch) {
+      errors.push(`Payroll reports: expected ${testCase.expectedPayrollReportCount}, got ${output.payrollReports?.length ?? 0}`);
+    }
+
+    const passed = routeMatch && riskMatch && reviewMatch && citationsMatch && answerSourceMatch && textMatch && payrollReportMatch;
     
     return {
       caseId: testCase.id,
@@ -162,6 +170,7 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
       citationsMatch,
       answerSourceMatch,
       textMatch,
+      payrollReportMatch,
       actualRoute: output.route,
       actualRisk: output.risk,
       actualReview: output.needsReview,
@@ -186,6 +195,7 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
       citationsMatch: false,
       answerSourceMatch: false,
       textMatch: false,
+      payrollReportMatch: false,
       actualRoute: 'escalate' as Route, // Fallback
       actualRisk: 'high' as RiskLevel, // Fallback
       actualReview: true,

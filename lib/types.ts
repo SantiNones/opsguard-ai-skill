@@ -19,6 +19,31 @@ export interface DraftAction {
   missingFields: string[];
 }
 
+export interface PayrollReportLineItem {
+  label: string;
+  amount: number;
+}
+
+export interface PayrollReport {
+  recordId: string;
+  employeeId: string;
+  employeeName: string;
+  payrollMonth: string;
+  periodStart: string;
+  periodEnd: string;
+  paymentDate: string;
+  grossPay: number;
+  netSalary: number;
+  currency: string;
+  bankAccountLast4: string;
+  ibanCountry: string;
+  payrollStatus: string;
+  earnings: PayrollReportLineItem[];
+  deductions: PayrollReportLineItem[];
+  employerContributions: PayrollReportLineItem[];
+  notes?: string;
+}
+
 export interface ResolveOpsRequestOutput {
   request: string;
   risk: RiskLevel;
@@ -37,6 +62,7 @@ export interface ResolveOpsRequestOutput {
   };
   answerSource?: 'policy' | 'enterprise_context'; // What grounded the answer
   enterpriseAnswer?: string;                       // Data-grounded answer text
+  payrollReports?: PayrollReport[];
 }
 
 export interface ExampleRequest {
@@ -77,6 +103,7 @@ export interface EmployeeResponse {
   confidenceNote?: string;
   answerSource?: 'policy' | 'enterprise_context';
   dataPoints?: string[]; // surfaced data fields (for enterprise context answers)
+  payrollReports?: PayrollReport[];
 }
 
 // HR/Ops-facing review packet

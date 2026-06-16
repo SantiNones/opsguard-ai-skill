@@ -53,6 +53,12 @@ export const scenarioGroups: ScenarioGroup[] = [
         persona: 'EMP-003',
         expectedOutcome: 'answer_directly',
       },
+      {
+        label: 'Payroll reports',
+        text: 'Show me my last payroll reports',
+        persona: 'EMP-001',
+        expectedOutcome: 'answer_directly',
+      },
     ],
   },
   {
