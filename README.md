@@ -1,518 +1,232 @@
-# OpsGuard
+# OpsGuard — Risk-aware AI Skill for HR Operations
 
-**Risk-aware AI Skill for HR Operations**
+Live Demo
+GitHub
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-View%20App-blue)](https://opsguard-ai-skill.vercel.app/)
-[![GitHub](https://img.shields.io/badge/GitHub-Repo-black)](https://github.com/SantiNones/opsguard-ai-skill)
+AI does not just answer. It routes.
+
+OpsGuard is an AI Skill that routes HR Operations requests across policy answers, live employee data, access restrictions, and human review workflows. It demonstrates how enterprise AI systems can ground decisions in retrievable policy, enforce role-based access, and safely hand off sensitive cases to human reviewers.
 
 ---
 
 ## The Problem
 
-HR Operations teams handle sensitive, high-stakes requests daily: payroll adjustments, time corrections, remote work approvals, leave policies. These requests often involve:
+HR Operations handles sensitive, high-stakes requests every day:
 
-- **Compliance risks** (tax implications, labor law violations)
-- **Financial exposure** (incorrect payroll, overtime disputes)
-- **Data privacy concerns** (PII handling, access controls)
-- **Urgency conflicts** (payroll deadlines vs. thorough review)
+- Payroll adjustments, bank changes, cutoff emergencies
+- Time tracking corrections, missed clock-ins, overtime disputes
+- Leave balances, carryover rules, approval workflows
+- Remote work across borders with tax and compliance implications
+- Employee data privacy and field-level access control
 
-Most AI assistants simply answer. They don't assess risk, check policy, or route to appropriate approvers. This creates liability gaps and operational blind spots.
+Most AI assistants simply answer. They do not assess risk, verify policy, check permissions, or route to the right approver. This creates liability gaps, compliance blind spots, and operational risk.
 
 ## The Solution
 
-OpsGuard is an AI Skill that doesn't just answer—it **routes safely**. For every request, it:
+For every request, OpsGuard:
 
-1. **Retrieves** relevant policies and precedents
-2. **Classifies risk** (low / medium / high)
-3. **Chooses a safe route** based on confidence and constraints
-4. **Prepares a human-review packet** with citations and recommended actions
+1. Retrieves relevant policies using stable rule IDs like VL-01 and TT-02
+2. Looks up enterprise context when needed, such as employee records and org chart data
+3. Enforces access control before returning live employee data
+4. Classifies risk as low, medium, or high
+5. Chooses a safe route:
+   - answer_directly — Low risk with policy citation or permitted live data
+   - ask_for_info — Insufficient context, needs clarification
+   - draft_action — Medium risk, creates a review case for approval
+   - escalate — High risk or sensitive, immediate HR handoff
+6. Prepares a review packet with citations, risk reasoning, owner, and recommended actions
 
-### Core Workflow
+## Core Workflows
 
-```
-Request → Policy Retrieval → Risk Classification → Safe Route → Human Review Packet
-```
+| Request | Route | What Happens |
+|---------|-------|--------------|
+| “Can I carry over vacation days?” | answer_directly | Policy answer citing VL-01 |
+| “How many vacation days do I have per year?” | answer_directly | Policy answer citing VL-05 |
+| “What is my vacation balance?” | answer_directly | Live Data from the employee’s own record |
+| Ana, an employee, asks for Carlos’s balance | answer_directly | Access restricted — no live data returned |
+| Laura, a manager, asks for Carlos’s balance | answer_directly | Live Data — Carlos is her direct report |
+| “I forgot to clock in yesterday and worked overtime” | draft_action | Review case created for manager approval |
+| HR Ops opens a case in Review Queue | — | Sees owner, timestamp, policy references, and can resolve or delete |
+| “I want to work from Portugal for 3 weeks” | escalate | Immediate HR specialist handoff |
 
-**Allowed Routes:**
-- `answer_directly` — Low risk, high confidence, documented answer
-- `ask_missing_info` — Insufficient context, needs clarification
-- `draft_action` — Medium risk, requires approval chain
-- `escalate` — High risk, immediate specialist handoff
+## Architecture
 
-### Why This Matters
+Request  
+↓  
+Policy Retrieval  
+(rule-level chunks, stable IDs)  
+↓  
+Enterprise Context Lookup  
+(mock employee data, org chart)  
+↓  
+Access Control  
+(role-based and field-level permissions)  
+↓  
+Risk / Routing Decision  
+(deterministic or AI-assisted)  
+↓  
+Response Builder  
+(employee answer + HR review packet)  
+↓  
+Review Packet / Review Queue  
+(if human review is needed)  
+↓  
+Evals  
+(route, risk, citations, retrieval, confidence)
 
-AI in operations shouldn't be a black box that gives answers. It should be a **transparent decision system** that:
-- Knows its limits (when to escalate)
-- Shows its work (citations, reasoning)
-- Respects boundaries (never auto-approves sensitive actions)
-- Prepares handoffs (structured packets for humans)
+## RAG / Policy Grounding
 
-## Key Features
+Policies are stored as Markdown files with stable rule IDs:
 
-- ✅ **3-Column Workspace** — Request intake, decision summary, action packet
-- ✅ **Risk Visualization** — Color-coded badges (green safe, amber warning, red critical)
-- ✅ **Policy Citations** — Automatic rule matching with excerpts
-- ✅ **Workflow Stepper** — Visual progress through decision pipeline
-- ✅ **Multi-Channel Handoff** — Copy formatted packets for Slack, Teams, or tickets
-- ✅ **Example Library** — Vacation, clock-in, payroll, remote work scenarios
+- VL-01 — Vacation Carryover
+- VL-02 — Leave Approval
+- VL-03 — Leave Balance
+- VL-04 — PTO vs Vacation
+- VL-05 — Annual Vacation Entitlement
+- TT-01 — Missed Clock-Ins
+- PA-01 — Payroll Cutoff Dates
 
-## AI Product Engineering Concepts
+Retrieval features:
 
-This project demonstrates modern AI Product Engineering patterns:
+- Rule-level chunking instead of arbitrary token windows
+- Whole-word matching with policy-domain boosts
+- Context budget of 1800 tokens
+- Citation eligibility validation
+- Retrieval evals: 12/12 cases, Recall@5 = 100%
 
-| Concept | Implementation |
-|---------|---------------|
-| **Spec-Driven Development** | [`skills/resolve_ops_request.skill.md`](./skills/resolve_ops_request.skill.md) defines the AI contract |
-| **AI Skills** | Reusable, versioned capability with explicit inputs/outputs |
-| **RAG-Style Grounding** | Policy retrieval layer with stable rule IDs (TT-01, PA-03, etc.) |
-| **Structured Outputs** | Typed responses with risk levels, routes, and citations |
-| **Human-in-the-Loop** | Review gates for medium/high risk actions |
-| **Evals** | [`evals/ops-evals.json`](./evals/ops-evals.json) — test cases for regression testing |
-| **Safe Action Routing** | Forbidden actions explicitly defined (no auto-approvals) |
+The Knowledge Base allows users to browse policies by domain, inspect rule IDs, and search across policy titles and text.
+
+## Enterprise Context & Access Control
+
+OpsGuard uses a mock enterprise dataset with 8 fictitious employees, an org chart, roles, and permissioned data.
+
+| Role | Self | Direct Reports | Others |
+|------|------|----------------|--------|
+| Employee | Full own data | None | None |
+| Manager | Full own data | Work and leave status, no salary | Minimal |
+| HR Ops | Full HR data | Contract and HR details | Partial HR access |
+| Payroll Admin | Payroll data | Payroll records | Payroll-specific data only |
+
+Access decisions happen before live data is shown.
+
+Examples:
+
+- Employees can see their own leave balance
+- Managers can see direct report vacation status
+- Peer employee data is restricted
+- Salary and bank details require payroll-specific access
+- Payroll Admin access does not automatically grant visibility into all non-payroll HR data
+
+## Human-in-the-Loop Review Queue
+
+Sensitive or action-oriented requests create review cases.
+
+Review cases include:
+
+- exact creation timestamp
+- resolved owner when inferable
+- owner role and department
+- summary
+- recommended action
+- risk level
+- route
+- policy references
+- source label for console-created cases
+
+HR Ops can open cases, inspect policy references, mark cases as resolved, or delete them from the active queue.
+
+For demo purposes, created review cases are stored in localStorage.
+
+## Resolver Modes
+
+OpsGuard supports two resolver modes:
+
+| Mode | How to Enable | Use Case |
+|------|---------------|----------|
+| Deterministic | USE_AI=false or unset | Repeatable demos, evals, zero cost |
+| AI-assisted | USE_AI=true and OPENAI_API_KEY | GPT-4o-mini with structured outputs and deterministic fallback |
+
+Safe fallback is applied if the AI returns invalid JSON, unsupported citations, unsafe routing, or fails schema validation.
+
+The UI does not toggle production environment variables. Resolver mode is controlled through environment configuration.
+
+## Evals
+
+Three eval suites validate routing, retrieval, and confidence behavior:
+
+npm run eval — 15/15, route, risk, review, citations  
+npm run eval:retrieval — 12/12, Recall@5, forbidden violations  
+npm run eval:confidence — 8/8, confidence, no-policy, sensitive escalation
+
+All evals run deterministically with no OpenAI calls unless explicitly enabled.
+
+Eval coverage includes:
+
+- policy questions with required citations
+- annual vacation entitlement citing VL-05
+- live data balance lookup
+- manager querying a direct report’s vacation balance
+- target employee resolution when a request contains both “I” and an explicit employee name
+- time correction and overtime approval flows
+- payroll cutoff escalation
+- remote work abroad escalation
+- no-policy and sensitive-request handling
 
 ## Tech Stack
 
-- **Framework:** Next.js 16 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **AI Layer:** Deterministic mock (OpenAI integration in next milestone)
-- **Deployment:** Vercel
-
-## Project Structure
-
-```
-app/              # Next.js application
-components/       # UI components (layout, request, decision, action, system)
-lib/              # Types, mock resolver, copy utilities
-docs/             # SPEC.md, ARCHITECTURE.md
-skills/           # AI Skill contracts
-policies/         # HR policy documents with rule IDs
-evals/            # Test cases and eval suite
-```
-
-## Demo Outcomes
-
-OpsGuard demonstrates six distinct capabilities via grouped scenario chips:
-
-| Outcome | Scenario | What to Expect |
-|---------|----------|----------------|
-| **Auto-answer (policy)** | Vacation carryover | Direct answer with VL-01 citation |
-| **Auto-answer (live data)** | My vacation balance | Live balance from enterprise record — "Live Data" badge |
-| **Auto-answer (manager view)** | Carlos's vacation balance | Manager sees direct report's balance; `answerSource: enterprise_context` |
-| **Draft action** | Missed clock-in / Overtime | Draft ticket, manager approval required |
-| **Escalate** | Payroll bank update / Remote abroad | Immediate HR specialist handoff |
-| **Deny / Redact** | Colleague's salary | "Not allowed" for employee; access-denied packet for HR |
-
-### Policy Citation vs Enterprise Context Source
-
-| Answer type | Source | When used |
-|-------------|--------|-----------|
-| **Policy citation** | Policy Knowledge Base (VL-01, TT-01, ...) | Query asks *what the rule says* |
-| **Enterprise context** | Live employee record (leave balance data) | Query asks *what my specific data is* |
-
-The key distinction: "Can I carry over vacation days?" → policy answer. "How many days do I have left?" with actorId → enterprise context answer.
-
-### Supported Request Types
-
-- **Leave & Vacation** — balance, carryover, approval notice, approval process
-- **Time & Overtime** — missed clock-ins, overtime corrections, audit requirements
-- **Payroll** — bank account changes, cutoff emergencies, payroll records
-- **Remote Work** — domestic remote, cross-border work, compliance review
-- **Onboarding** — pre-start checklist, document requirements
-- **Compensation** — salary change requests (always escalated)
-- **Ambiguous** — unclear requests (routed to ask_for_info)
-
-### Auto-answer vs Draft vs Escalate vs Deny
-
-```
-Low risk + high confidence + policy found  → answer_directly
-Insufficient context                        → ask_for_info
-Medium risk + approval chain needed         → draft_action
-High risk / compliance trigger              → escalate
-No access / access denied                  → escalate with deny packet
-```
-
-### View Mode Guide
-
-| Mode | Best For | What You See |
-|------|----------|--------------|
-| **Both Views** | Demo / interview | Full picture: employee answer + HR packet + decision summary |
-| **Employee View** | UX review | Only what the employee sees — clean, simple, no internal details |
-| **HR View** | HR/Ops review | HR packet, risk level, citations, recommended owner, audit trail |
-
-## Current Status
-
-**Sprint 8 Complete (Demo Polish & Outcome Routing):**
-
-- ✅ **Enterprise Context Answers** — Vacation balance, leave status answered from permissioned live data without requiring policy citations
-- ✅ **Grouped Demo Scenarios** — Auto-answer / Draft action / Escalate / Deny groups replace flat example chips
-- ✅ **Persona Auto-select** — Clicking a scenario chip auto-sets the recommended actor persona
-- ✅ **Loading Sequence** — Animated 6-step progress indicator during analysis (UI-only, single API call)
-- ✅ **Live Data Badge** — Employee response shows "Live Data" badge when answer comes from enterprise record
-- ✅ **Bold Rendering** — Key data in enterprise answers rendered as bold text
-- ✅ **Improved View Modes** — Employee view hides Decision Summary/Workflow; HR view shows all internal detail
-- ✅ **Technical Panels Reordered** — Enterprise Context, Confidence, Confidentiality, Diagnostics, Observability collapsed in right column
-- ✅ **Leave Status Data** — `vacationBalance`, `usedVacationDays`, `remainingVacationDays`, `pendingLeaveRequests`, `lastClockInStatus` per employee
-- ✅ **New Eval Case** — `manager_vacation_balance_answer` (route: answer_directly, risk: low, no review)
-- ✅ **All 11 evals pass** — Including new leave balance case
-
-**Milestone 6 Complete:** RAG Quality Layer — Rule-level chunking, context budgeting, retrieval evals
-
-- ✅ **Rich Chunk Metadata** — `chunkId`, `domain`, `sensitivity`, `keywords`, `citationEligible`, `tokenEstimate`
-- ✅ **Transparent Scoring** — 5 explicit components: lexical, title, domain, rule boost, sensitivity boost
-- ✅ **Whole-Word Matching** — Prevents false positives (e.g. "over" matching "overtime")
-- ✅ **Context Budget** — Max 1800 tokens, excludes chunks that would overflow
-- ✅ **Retrieval Diagnostics** — confidence, token usage, selected rules, budget exclusions
-- ✅ **Retrieval Diagnostics UI** — Collapsible panel in right column
-- ✅ **Citation Eligibility** — Only `citationEligible: true` chunks can be cited
-- ✅ **Retrieval Evals** — 12 cases, Recall@5 = 100%, MRR = 0.958, 0 forbidden violations
-- ✅ **`npm run eval:retrieval`** — Deterministic, no OpenAI calls
-
-**Milestone 3B Complete:** OpenAI structured resolver with deterministic fallback
-
-- ✅ **OpenAI Integration** — GPT-4o-mini with structured JSON outputs
-- ✅ **Zod Validation** — Schema validation for AI responses with citation verification
-- ✅ **Safe Fallback** — Deterministic resolver on any AI failure (invalid JSON, bad citations, unsafe routing)
-- ✅ **Cost Controls** — 
-  - Uses gpt-4o-mini by default
-  - Only calls OpenAI on "Analyze request" click
-  - Max 5 policy chunks, max 800 tokens output
-  - Deterministic evals by default (no surprise costs)
-- ✅ **Eval Runner** — 
-  - `npm run eval` → deterministic mode (free)
-  - `USE_AI=true npm run eval` → AI mode (costs apply)
-
-**Milestone 3A.1 Complete:** Deterministic eval performance optimized
-
-- ✅ **Eval Results: 100% Pass Rate**
-  - Route Accuracy: 100%
-  - Risk Accuracy: 100%
-  - Review Safety: 100%
-  - Citation Recall: 100%
-- ✅ **Policy Retrieval** — Loads markdown policy files, parses rule sections (TT-01, PA-03, etc.), keyword-based relevance scoring with explicit rule ID boosting
-- ✅ **Safety Rules** — Deterministic overrides for sensitive topics (payroll, compensation, cross-border, legal)
-- ✅ **Unified Resolver** — Orchestrates retrieval + AI/deterministic classification + safety layer
-- ✅ **API Route** — `/api/resolve` endpoint with structured request/response
-- ✅ **UI/API Integration** — Frontend calls API with graceful fallback to local mock
-
-**Milestone 5 Complete:** Dual Audience UX — Employee Answer + HR Review Packet
-
-- ✅ **Dual Output Types** — EmployeeResponse and HRReviewPacket interfaces
-- ✅ **Response Builder** — Transforms resolver output into audience-specific responses
-- ✅ **Employee-Facing UI** — Clear, safe answers with status badges and privacy notes
-- ✅ **HR Review UI** — Structured packets with risk, reasoning, and recommended actions
-- ✅ **View Mode Toggle** — Switch between Employee, HR, or Both views
-- ✅ **Safe Escalation** — Sensitive requests automatically routed to HR review
-- ✅ **Access-Aware Citations** — Employees only see non-sensitive policy references
-- ✅ **Backward Compatibility** — Existing UI components and evals preserved
-
-**Dual Audience Examples:**
-| Request | Employee Sees | HR Sees |
-|---------|---------------|---------|
-| "Can I carry over vacation days?" | Direct answer with policy citation | Review packet with low risk |
-| "What is Ana's salary?" | "Not allowed" with privacy note | Access denied packet with audit trail |
-| "Need payroll bank update" | "Sent to HR review" message | Escalation packet with draft action |
-
-**Milestone 4 Complete:** Enterprise Context & Access Control Simulation
-
-- ✅ **Fictitious Enterprise Dataset** — 8 Spanish/European employees, contracts, payroll records
-- ✅ **Role-Based Access Control** — Employee, Manager, HR Ops, Payroll Admin roles
-- ✅ **Permissioned Context** — Field-level access control for sensitive HR/Payroll data
-- ✅ **Redaction Layer** — Automatic masking of salary, bank accounts, sensitive fields
-- ✅ **Persona Switcher** — UI component to view as different roles
-- ✅ **Enterprise Context Panel** — Collapsible panel showing access level and redactions
-- ✅ **No Real Data** — All mock data is fictitious; no PII risk
-- 📖 See `docs/ACCESS_CONTROL.md` for full access control documentation
-
-**Access Levels by Role:**
-| Role | Self | Direct Reports | Others |
-|------|------|----------------|--------|
-| Employee | Full | None | None |
-| Manager | Full | Partial (no salary) | Minimal |
-| HR Ops | Full | Full contract | Partial |
-| Payroll Admin | Full | Payroll records | Full payroll |
-
-**Milestone 1-2 Complete:** Frontend MVP with documentation
-
-- ✅ Premium internal-tool UI
-- ✅ 4 example scenarios with mock classification
-- ✅ Risk badges and workflow visualization
-- ✅ Copy-to-clipboard for handoff
-- ✅ Product spec, architecture docs, AI Skill contract
-- ✅ 5 policy documents with stable rule IDs
-- ✅ Eval suite with 10 test cases
-
-## Next Milestone
-
-**Milestone 3B:** OpenAI Integration
-
-- [ ] OpenAI API integration (GPT-4 with structured outputs)
-- [ ] Enhanced policy retrieval with vector embeddings
-- [ ] LLM-based classification with citation grounding
-- [ ] Improved confidence scoring
-- [ ] Request history and audit logging
-
-## Live Demo
-
-🚀 **[https://opsguard-ai-skill.vercel.app/](https://opsguard-ai-skill.vercel.app/)**
-
-Try the grouped scenario chips:
-- **Auto-answer** → Vacation carryover (policy) · My vacation balance (live data) · Carlos's balance (manager)
-- **Draft action** → Missed clock-in · Overtime correction
-- **Escalate** → Payroll bank update · Remote work abroad
-- **Deny / Redact** → Colleague's salary
-
-## Repository
-
-📁 **[https://github.com/SantiNones/opsguard-ai-skill](https://github.com/SantiNones/opsguard-ai-skill)**
+- Next.js 16 — App Router, React Server Components
+- TypeScript — End-to-end type safety
+- Tailwind CSS — Utility-first styling
+- Vercel — Deployment and hosting
+- OpenAI — Optional GPT-4o-mini resolver with structured outputs
+- localStorage — Demo Review Queue persistence
+- Markdown — Human-readable, version-controlled policies
 
 ## Local Development
 
-```bash
-npm install
-npm run dev          # Start dev server on http://localhost:3000
-npm run eval         # Run eval suite and see accuracy report
-npm run build        # Production build
-npm run lint         # ESLint check
-```
+npm install  
+npm run dev  
+npm run lint  
+npm run build  
+USE_AI=false npm run eval  
+npm run eval:retrieval  
+USE_AI=false npm run eval:confidence
 
-Open [http://localhost:3000](http://localhost:3000)
+Open:
 
-## How It Works
+http://localhost:3000
 
-### Policy Retrieval (Deterministic)
+## Limitations
 
-The system loads markdown policy files from `/policies/` and parses them into searchable chunks:
+This is a demonstration and interview project, not production software.
 
-```
-Request: "I forgot to clock in yesterday"
-         ↓
-Retrieved Chunks:
-  - TT-01: Missed Clock-Ins
-  - TT-02: Manager Approval Required
-  - TT-03: Overtime Corrections
-         ↓
-Resolver: Classifies as medium risk, draft_action route
-         ↓
-Safety Rules: Applies overrides if needed
-         ↓
-Output: Structured decision with citations
-```
+Current limitations:
 
-**Scoring method:** Keyword overlap with policy type bonuses (TT, PA, VL, RW, ON)
+- enterprise data is mock and fictitious
+- no real HRIS integration
+- no real authentication or SSO
+- Review Queue uses localStorage, not a persistent backend database
+- policies are local Markdown files, not synced from a real policy management system
+- no vector database is currently used
+- not security-hardened or compliance-certified for production use
 
-**Future:** Will be replaced with vector similarity search (Chroma/Pinecone)
+## Production Roadmap
 
-### Safety Rules
+To take OpsGuard to production:
 
-Deterministic overrides prevent unsafe routing:
-
-| Trigger | Action |
-|---------|--------|
-| Payroll keywords | Risk → medium/high, must escalate if action requested |
-| Compensation keywords | Must escalate, never answer directly |
-| Cross-border work | Risk → high, must escalate |
-| Missing citations | Route → ask_for_info |
-| Time + overtime | Risk → medium, route → draft_action |
-
-### Eval Runner
-
-```bash
-npm run eval
-```
-
-Runs 10 test cases and reports:
-- Route accuracy (%)
-- Risk classification accuracy (%)
-- Human review safety (%)
-- Citation recall (%)
-- Average latency (ms)
-- Per-case detailed results
-
-### OpenAI Integration with Safe Fallback
-
-OpsGuard uses OpenAI when `USE_AI=true` and `OPENAI_API_KEY` is set:
-
-```bash
-# .env.local
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
-USE_AI=true
-```
-
-**Fallback Triggers:**
-- AI returns invalid JSON
-- AI cites rules not in retrieved chunks (hallucination)
-- AI attempts to auto-approve sensitive actions (payroll, compensation, cross-border)
-- OpenAI API error or timeout
-- Schema validation fails
-
-```
-Request → Policy Retrieval → Try AI → [Valid?] → Apply Safety → Output
-                              ↓
-                        [Invalid/Unsafe]
-                              ↓
-                    Fallback to Deterministic
-```
-
-This ensures HR Operations workflows degrade safely.
-
-### Enterprise Context and Access Control
-
-OpsGuard simulates how an enterprise HR Operations AI handles permissioned data:
-
-**Fictitious Enterprise Dataset:**
-- 8 Spanish/European employees (fictitious names, no real PII)
-- 2 Managers, 1 HR Ops, 1 Payroll Admin, 4 Employees
-- Contracts, payroll records, and org chart relationships
-
-**Role-Based Access:**
-```
-Employee:     Can see own data only
-Manager:      Can see direct reports' work status (not salary)
-HR Ops:       Can see contract details for HR cases
-Payroll Admin: Can see payroll records (salary, bank last4)
-```
-
-**Redaction Examples:**
-- `ana.garcia@company.es` → `a***@c***.es`
-- `€42,000/year` → `[SALARY_AMOUNT_REDACTED]`
-- `ES91 2345 6789 0123` → `ES91 **** **** 0123`
-
-**Demo Usage:**
-1. Select a persona in the UI (e.g., "Manager — Laura Martín")
-2. Submit a request about a direct report (e.g., "What's Carlos's vacation balance?")
-3. View the Enterprise Context panel to see:
-   - Access level granted (full/partial/minimal)
-   - Fields that were redacted
-   - Why certain data is hidden
-
-**Production Path:**
-Mock data → HRIS API (Workday/BambooHR) + Identity Provider (Okta/Azure AD) + Audit logging
-
-See `docs/ACCESS_CONTROL.md` for full documentation.
-
-### Dual Audience UX
-
-OpsGuard provides two distinct views for HR Operations requests:
-
-**Employee Response:**
-- Clear, simple answers in employee-friendly language
-- Status badges: Answered, Needs More Info, Sent to HR Review, Not Allowed
-- Privacy notes when data is redacted
-- Safe escalation messages for sensitive requests
-- Limited to non-sensitive policy citations
-
-**HR Review Packet:**
-- Structured internal packet with risk assessment
-- Complete reasoning and policy citations
-- Draft actions for HR to execute
-- Access control notes and audit trail
-- Recommended owner assignment
-
-**View Modes:**
-- **Both Views** (default): Shows employee response first, then HR packet
-- **Employee View**: Shows only what the employee would see
-- **HR View**: Shows only the internal review packet
-
-**Example Flows:**
-1. **Simple Policy Question** → Employee gets direct answer, HR gets low-risk packet
-2. **Missing Information** → Employee sees what's needed, HR gets escalation packet
-3. **Sensitive Request** → Employee gets "sent to HR review", HR gets detailed packet with draft action
-4. **Access Denied** → Employee sees "not allowed", HR sees access control audit
-
-### RAG Quality Layer
-
-OpsGuard uses **rule-level chunking** — each chunk maps to one stable policy rule ID (TT-01, VL-03, etc.), not arbitrary token windows.
-
-**Why rule-level chunks for HR policy?**
-- HR policies are operationally structured: each rule is a self-contained business rule
-- Citations must point to stable IDs for audit and explainability
-- Rule boundaries are meaningful — an employee's right to carryover vacation lives entirely in VL-01
-
-**Chunk Metadata (per rule):**
-```
-chunkId, chunkType, ruleId, policyName, title, content, excerpt
-sourceFile, domain, sensitivity (low/medium/high)
-keywords, citationEligible, tokenEstimate
-```
-
-**Scoring Strategy (5 components):**
-1. **Lexical** — whole-word overlap between query tokens and chunk text
-2. **Title** — bonus for matches in rule title (higher precision signal)
-3. **Domain** — bonus when query keywords align with chunk domain keywords
-4. **Rule boost** — explicit boost for known query/rule patterns (deterministic recall)
-5. **Sensitivity boost** — extra weight for sensitive queries matching sensitive chunks
-
-**Context Budget:**
-- Max 1800 tokens per request (leaves room for system prompt + AI output)
-- Retriever ranks by score, then excludes chunks that would exceed budget
-- Budget exclusions are surfaced in diagnostics
-
-**Citation Eligibility:**
-- Only `citationEligible: true` chunks can be cited by the AI
-- Prevents hallucinated citations — AI may only cite retrieved rule IDs
-- Existing fallback validates all citations anyway
-
-**Running Retrieval Evals:**
-```bash
-npm run eval:retrieval     # deterministic, no OpenAI
-```
-
-**Retrieval Eval Results (12 cases):**
-| Metric | Value |
-|--------|-------|
-| Recall@5 | 100% |
-| MRR | 0.958 |
-| Forbidden violations | 0 |
-| Avg context tokens | ~489 / 1800 |
-
-### Confidence Modeling (`lib/confidence.ts`)
-
-Confidence is computed **per-request** as a composite score (0–1) from five factors:
-
-| Factor | Signal |
-|--------|--------|
-| Retrieval confidence | Strong policy match → +0.25, None → −0.20 |
-| Citation count | ≥2 citations → +0.10, 0 citations → −0.15 |
-| Route clarity | `answer_directly` + low risk → +0.10; `ask_for_info` → −0.10 |
-| Resolver mode | AI failure fallback → −0.10 |
-| Access restrictions | `accessLevel=none` → −0.10, redactions → −0.05 |
-
-Labels: **high** (≥70%), **medium** (45–69%), **low** (<45%)
-
-**No-policy-found detection:** When label is `low` + zero citations + low retrieval confidence, the employee response changes to "Policy Not Found" with a direct HR referral message.
-
-**Running Confidence Evals:**
-```bash
-npm run eval:confidence    # deterministic, no OpenAI (8 cases)
-```
-
-### Confidentiality Diagnostics (`lib/privacy/confidentiality.ts`)
-
-Sensitive categories detected via query pattern matching (no real data exposed):
-
-`payroll` · `salary` · `compensation` · `bank_account` · `personal_identifier` · `cross_border` · `email` · `phone` · `address`
-
-Level is **high** when payroll/salary/bank/compensation keywords appear or ≥3 redactions applied; **medium** for PII/cross-border; **low** otherwise.
-
-### Observability Metadata (`lib/observability.ts`)
-
-Per-request operational record surfaced in API response and UI panel:
-
-```
-requestId, createdAt, resolverMode (ai/fallback/deterministic)
-latencyMs, modelName, retrievalChunkCount, estimatedContextTokens
-confidenceLabel, confidentialityLevel, redactionsApplied, requiresHumanReview
-tokenUsageEstimate { inputTokensEstimate, outputTokensEstimate, estimatedCostUsd }
-```
-
-Cost estimate uses published GPT-4o-mini pricing ($0.15/1M input, $0.60/1M output); 0 for deterministic runs.
-
-## License
-
-MIT — Built for AI Product Engineer interviews and production inspiration.
+- SSO / Identity Provider — Okta, Azure AD, or Google Workspace
+- Real HRIS integration — Workday, BambooHR, SAP SuccessFactors, or Factorial-style employee data APIs
+- Postgres database — persistent cases, audit logs, request history, and case state
+- Vector database — Pinecone, Weaviate, or pgvector for semantic policy retrieval
+- Ticketing integration — Jira, ServiceNow, Zendesk, Linear, or internal HR ticketing tools
+- Slack / Teams integration — conversational intake and handoff
+- Audit logs — immutable request, retrieval, access-control, and routing records
+- Admin dashboard — policy management, analytics, review queues, and human feedback loop
+- Monitoring — observability, cost tracking, error alerting, and eval regression monitoring
+- Compliance controls — data retention policies, permission reviews, redaction logs, and approval trails
 
 ---
 
-**Built with ❤️ by Santi Nones** — *AI should route safely, not just answer blindly.*
+Built by Santi Nones — AI should route safely, not just answer blindly.
+
+MIT License — Built for AI Product Engineer interviews and production inspiration.
