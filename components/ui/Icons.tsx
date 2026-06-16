@@ -190,3 +190,22 @@ export function LockIcon({ className, strokeWidth = 1.7 }: IconProps) {
     </svg>
   );
 }
+
+export function EyeIcon({ className, strokeWidth = 1.7 }: IconProps) {
+  return (
+    <svg className={base(className)} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={strokeWidth}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+    </svg>
+  );
+}
+
+export function EyeOffIcon({ className, strokeWidth = 1.7 }: IconProps) {
+  return (
+    <svg className={base(className)} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={strokeWidth}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.6 10.6a2 2 0 002.8 2.8" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.3 5.4A9.9 9.9 0 0112 5c6 0 9.5 7 9.5 7a17.4 17.4 0 01-2.2 3.1M6.1 6.1C3.8 7.6 2.5 12 2.5 12s3.5 7 9.5 7c1.5 0 2.8-.4 4-.9" />
+    </svg>
+  );
+}

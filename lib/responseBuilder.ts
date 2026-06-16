@@ -85,6 +85,7 @@ function buildEmployeeResponse(
         dataPoints: isEnterpriseAnswer
           ? (output.reviewPacket?.summary.replace('Enterprise context answer: ', '').split(', ') ?? [])
           : undefined,
+        payrollReports: output.payrollReports,
       };
     }
       
@@ -98,7 +99,7 @@ function buildEmployeeResponse(
           visibleCitations: [],
           missingFields: [],
           nextStep: 'Contact HR directly if you have a legitimate business need',
-          privacyNote: 'Access to other employees\u2019 leave data is restricted to managers and HR.',
+          privacyNote: 'Access to other employees’ payroll and employee data is restricted.',
         };
       }
       return {

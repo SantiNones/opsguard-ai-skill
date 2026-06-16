@@ -2,20 +2,22 @@
  * Enterprise Data Resolver
  *
  * Detects when a query can be answered directly from permissioned enterprise
- * context data (e.g. vacation balance, leave status) without needing policy
+ * context data (e.g. vacation balance, leave status, own payroll reports) without needing policy
  * citations. This is distinct from policy-grounded answers:
  *
  *   Policy answer    → requires citation from policy KB
  *   Enterprise answer → requires permissioned access to actor/target data
  *
  * Only safe, non-sensitive fields are surfaced (balance, status, counts).
- * Salary, bank, and compensation data are never returned here.
+ * Payroll reports are returned only for self-access.
  */
 
 import { getLeaveStatus } from '@/data/enterprise/leaveStatus';
+import { getRecentPayrollRecords } from '@/data/enterprise/payrollRecords';
 import { getEmployeeById } from '@/data/enterprise/employees';
 import { EnterpriseContextResult } from './enterpriseContext';
 import { determineAccess } from './accessControl';
+import { PayrollReport } from './types';
 
 export interface EnterpriseDataAnswer {
   answered: true;
@@ -24,6 +26,7 @@ export interface EnterpriseDataAnswer {
   dataPoints: string[];       // human-readable fields surfaced
   targetName: string;
   isSelf: boolean;
+  payrollReports?: PayrollReport[];
 }
 
 export interface EnterpriseDataDenied {
@@ -115,14 +118,47 @@ export function tryEnterpriseContextAnswer(
     !isActionRequest &&
     q.includes('clock') && (q.includes('status') || q.includes('last clock') || q.includes('last clock-in'));
 
-  if (!isVacationBalanceQuery && !isLeaveStatusQuery && !isClockStatusQuery) {
+  const isPayrollReportQuery =
+    (
+      q.includes('payroll report') ||
+      q.includes('payroll reports') ||
+      q.includes('payslip') ||
+      q.includes('pay slip') ||
+      q.includes('paystub') ||
+      q.includes('pay stub') ||
+      q.includes('nomina') ||
+      q.includes('nómina') ||
+      q.includes('nominas') ||
+      q.includes('nóminas')
+    ) &&
+    (
+      q.includes('my') ||
+      q.includes('mis') ||
+      q.includes('mi ') ||
+      q.includes('own') ||
+      q.includes('show') ||
+      q.includes('see') ||
+      q.includes('open') ||
+      q.includes('view')
+    );
+
+  if (!isVacationBalanceQuery && !isLeaveStatusQuery && !isClockStatusQuery && !isPayrollReportQuery) {
     return { answered: false };
   }
 
   // Permission check: use leave-specific access rules (stricter than general accessLevel)
   const actorId = enterpriseContext.actor.employeeId;
   const targetId = enterpriseContext.targetEmployee?.employeeId ?? actorId;
-  if (!canAccessLeaveBalance(actorId, targetId, enterpriseContext.actor.role)) {
+  if (isPayrollReportQuery && actorId !== targetId) {
+    const deniedTarget = getEmployeeById(targetId);
+    return {
+      answered: false,
+      accessDenied: true,
+      targetFirstName: deniedTarget?.name.split(' ')[0] ?? 'that employee',
+    };
+  }
+
+  if (!isPayrollReportQuery && !canAccessLeaveBalance(actorId, targetId, enterpriseContext.actor.role)) {
     // If the query was for a SPECIFIC other employee, signal access denied explicitly
     // so the resolver can return a clear restriction message instead of a policy fallthrough.
     if (actorId !== targetId) {
@@ -137,15 +173,54 @@ export function tryEnterpriseContextAnswer(
   }
 
   // Determine which employee's data to surface
-  const leave = getLeaveStatus(targetId);
-  if (!leave) return { answered: false };
-
   const targetEmp = getEmployeeById(targetId);
   if (!targetEmp) return { answered: false };
 
   const targetName = isSelf ? 'you' : targetEmp.name.split(' ')[0]; // first name only
   const dataPoints: string[] = [];
   const parts: string[] = [];
+
+  if (isPayrollReportQuery) {
+    const reports = getRecentPayrollRecords(actorId, 3).map(report => ({
+      recordId: report.recordId,
+      employeeId: report.employeeId,
+      employeeName: targetEmp.name,
+      payrollMonth: report.payrollMonth,
+      periodStart: report.periodStart,
+      periodEnd: report.periodEnd,
+      paymentDate: report.paymentDate,
+      grossPay: report.grossPay,
+      netSalary: report.netSalary,
+      currency: report.currency,
+      bankAccountLast4: report.bankAccountLast4,
+      ibanCountry: report.ibanCountry,
+      payrollStatus: report.payrollStatus,
+      earnings: report.earnings,
+      deductions: report.deductions,
+      employerContributions: report.employerContributions,
+      notes: report.notes,
+    }));
+
+    if (reports.length === 0) return { answered: false };
+
+    parts.push(`I found your latest ${reports.length} payroll report${reports.length !== 1 ? 's' : ''}. These contain sensitive payroll information and are only visible to you.`);
+    dataPoints.push(`Payroll reports: ${reports.length}`);
+    dataPoints.push(`Latest month: ${reports[0].payrollMonth}`);
+    dataPoints.push(`Access scope: self only`);
+
+    return {
+      answered: true,
+      answer: parts.join(' '),
+      answerSource: 'enterprise_context',
+      dataPoints,
+      targetName: 'self',
+      isSelf: true,
+      payrollReports: reports,
+    };
+  }
+
+  const leave = getLeaveStatus(targetId);
+  if (!leave) return { answered: false };
 
   if (isVacationBalanceQuery) {
     const pending = leave.pendingLeaveRequests > 0
