@@ -1,9 +1,8 @@
 # OpsGuard — Risk-aware AI Skill for HR Operations
 
-Live Demo
-GitHub
+[Live Demo](https://opsguard-ai-skill.vercel.app/) 
 
-AI does not just answer. It routes.
+**AI does not just answer. It routes.**
 
 OpsGuard is an AI Skill that routes HR Operations requests across policy answers, live employee data, access restrictions, and human review workflows. It demonstrates how enterprise AI systems can ground decisions in retrievable policy, enforce role-based access, and safely hand off sensitive cases to human reviewers.
 
