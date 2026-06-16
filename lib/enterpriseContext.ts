@@ -86,16 +86,16 @@ function inferTargetEmployee(
     }
   }
   
-  // Check for self-references (default to actor)
-  const selfReferences = ['my ', 'myself', 'i ', "i'm", 'me ', 'my vacation', 'my salary', 'my payroll'];
-  if (selfReferences.some(ref => normalizedRequest.includes(ref))) {
-    return { employeeId: actorId, method: 'default_self' };
-  }
-  
   // Try to find name mentions
   const nameMatch = findEmployeeByName(userRequest);
   if (nameMatch) {
     return { employeeId: nameMatch.employeeId, method: 'inferred' };
+  }
+  
+  // Check for self-references (default to actor)
+  const selfReferences = ['my ', 'myself', 'i ', "i'm", 'me ', 'my vacation', 'my salary', 'my payroll'];
+  if (selfReferences.some(ref => normalizedRequest.includes(ref))) {
+    return { employeeId: actorId, method: 'default_self' };
   }
   
   // No target detected - default to self for most cases
