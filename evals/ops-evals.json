@@ -115,6 +115,19 @@
       "notes": "POLICY-PATH TEST ONLY (no actorId in eval runner). Enterprise context answer (Live Data badge, actual balance) is validated manually in UI with Laura (EMP-003) as actor. Policy path routes answer_directly."
     },
     {
+      "id": "manager_access_to_direct_report_vacation_balance",
+      "input": "Can I access to Carlos's vacation balance?",
+      "actorId": "EMP-003",
+      "expectedRoute": "answer_directly",
+      "expectedRiskLevel": "low",
+      "mustRequireHumanReview": false,
+      "mustCiteRuleIds": [],
+      "expectedAnswerSource": "enterprise_context",
+      "mustIncludeText": ["Carlos has", "17 vacation days remaining"],
+      "mustNotIncludeText": ["You have **15 vacation days remaining"],
+      "notes": "Regression coverage: Laura manager phrasing with self-reference and explicit Carlos target must answer Carlos's live balance, not Laura's."
+    },
+    {
       "id": "emergency_cross_border",
       "input": "I'm stuck in Mexico due to a cancelled flight. Can I work from here for 2 days?",
       "expectedRoute": "escalate",
@@ -134,7 +147,7 @@
   "categories": {
     "time_tracking": ["missed_clock_in", "missed_clock_in_overtime"],
     "payroll": ["payroll_after_cutoff"],
-    "leave": ["vacation_carryover", "vacation_balance_inquiry", "manager_vacation_balance_answer", "employee_peer_vacation_balance_denied", "manager_direct_report_vacation_balance_answer"],
+    "leave": ["vacation_carryover", "vacation_balance_inquiry", "manager_vacation_balance_answer", "employee_peer_vacation_balance_denied", "manager_direct_report_vacation_balance_answer", "manager_access_to_direct_report_vacation_balance"],
     "remote_work": ["remote_work_abroad", "emergency_cross_border"],
     "onboarding": ["onboarding_checklist"],
     "compensation": ["compensation_change"],
