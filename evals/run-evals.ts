@@ -37,10 +37,14 @@ const colors = {
 interface EvalCase {
   id: string;
   input: string;
+  actorId?: string;
   expectedRoute: Route;
   expectedRiskLevel: RiskLevel;
   mustRequireHumanReview: boolean;
   mustCiteRuleIds: string[];
+  expectedAnswerSource?: 'policy' | 'enterprise_context';
+  mustIncludeText?: string[];
+  mustNotIncludeText?: string[];
   notes?: string;
 }
 
@@ -51,6 +55,8 @@ interface EvalResult {
   riskMatch: boolean;
   reviewMatch: boolean;
   citationsMatch: boolean;
+  answerSourceMatch: boolean;
+  textMatch: boolean;
   actualRoute: Route;
   actualRisk: RiskLevel;
   actualReview: boolean;
@@ -94,7 +100,7 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
   const errors: string[] = [];
   
   try {
-    const result = await resolveOpsRequest(testCase.input);
+    const result = await resolveOpsRequest(testCase.input, testCase.actorId);
     const output = result.output;
     
     // Check route match
@@ -129,7 +135,23 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
       errors.push(`Missing citations: ${missingCitations.join(', ')}`);
     }
     
-    const passed = routeMatch && riskMatch && reviewMatch && citationsMatch;
+    const answerSourceMatch = !testCase.expectedAnswerSource || output.answerSource === testCase.expectedAnswerSource;
+    if (!answerSourceMatch) {
+      errors.push(`Answer source: expected "${testCase.expectedAnswerSource}", got "${output.answerSource ?? 'none'}"`);
+    }
+
+    const answerText = `${output.explanation} ${output.enterpriseAnswer ?? ''}`;
+    const missingText = (testCase.mustIncludeText ?? []).filter(text => !answerText.includes(text));
+    const forbiddenText = (testCase.mustNotIncludeText ?? []).filter(text => answerText.includes(text));
+    const textMatch = missingText.length === 0 && forbiddenText.length === 0;
+    if (missingText.length > 0) {
+      errors.push(`Missing answer text: ${missingText.join(', ')}`);
+    }
+    if (forbiddenText.length > 0) {
+      errors.push(`Forbidden answer text present: ${forbiddenText.join(', ')}`);
+    }
+    
+    const passed = routeMatch && riskMatch && reviewMatch && citationsMatch && answerSourceMatch && textMatch;
     
     return {
       caseId: testCase.id,
@@ -138,6 +160,8 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
       riskMatch,
       reviewMatch,
       citationsMatch,
+      answerSourceMatch,
+      textMatch,
       actualRoute: output.route,
       actualRisk: output.risk,
       actualReview: output.needsReview,
@@ -160,6 +184,8 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
       riskMatch: false,
       reviewMatch: false,
       citationsMatch: false,
+      answerSourceMatch: false,
+      textMatch: false,
       actualRoute: 'escalate' as Route, // Fallback
       actualRisk: 'high' as RiskLevel, // Fallback
       actualReview: true,

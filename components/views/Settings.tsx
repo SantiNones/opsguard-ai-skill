@@ -32,8 +32,9 @@ export function Settings({ role, personaName }: SettingsProps) {
     {
       title: 'AI & Resolver',
       rows: [
-        { label: 'Resolver mode', value: 'Deterministic', note: 'AI optional — safe fallback always on' },
-        { label: 'Model', value: 'gpt-4o-mini', note: 'Used only when USE_AI=true' },
+        { label: 'Current resolver mode', value: 'Deterministic demo mode', note: 'Used for repeatable demos and deterministic evals' },
+        { label: 'AI-assisted mode', value: 'Available via env', note: 'USE_AI=true enables AI-assisted routing with deterministic fallback' },
+        { label: 'Model', value: 'gpt-4o-mini', note: 'Used only when AI mode is enabled outside the UI' },
         { label: 'Citation grounding', value: 'Enabled', note: 'AI may only cite retrieved rule IDs', locked: true },
       ],
     },
@@ -62,6 +63,24 @@ export function Settings({ role, personaName }: SettingsProps) {
               <LockIcon className="w-3.5 h-3.5" />
               Locked demo config
             </span>
+          </div>
+
+          <div className="og-card p-5">
+            <p className="og-section-title mb-2">Resolver mode explained</p>
+            <div className="grid md:grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-[#fff7f5] border border-[#eadeda] p-4">
+                <p className="text-sm font-black text-stone-950">Deterministic demo mode</p>
+                <p className="mt-1 text-xs font-medium text-stone-500 leading-relaxed">
+                  The demo uses deterministic routing for repeatable interviews, predictable manual QA, and local evals.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/70 border border-[#eadeda] p-4">
+                <p className="text-sm font-black text-stone-950">AI-assisted mode</p>
+                <p className="mt-1 text-xs font-medium text-stone-500 leading-relaxed">
+                  AI mode can be enabled with USE_AI=true and falls back to deterministic rules when validation fails. This page is status-only and does not change environment settings.
+                </p>
+              </div>
+            </div>
           </div>
 
           {sections.map((section) => (
