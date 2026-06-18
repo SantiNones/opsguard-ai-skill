@@ -68,6 +68,7 @@ function resolveOwnerDetails(output: ResolveOpsRequestOutput, actorId: string) {
 }
 
 function typeFromOutput(output: ResolveOpsRequestOutput): string {
+  if (output.draftAction?.type === 'time_correction') return 'Time Correction';
   if (output.draftAction?.type) return output.draftAction.type;
   if (output.answerSource === 'enterprise_context') return 'Live data lookup';
   if (output.route === 'escalate') return 'Escalation';
@@ -123,6 +124,7 @@ export function ActionPacket({
       timestamp: now.toISOString(),
       time: 'Just now',
       policyReferences: output.citations,
+      missingFields: output.reviewPacket?.missingFields ?? output.draftAction?.missingFields ?? [],
       source: 'created_from_request_console',
     };
     onCreateReviewCase(reviewCase);

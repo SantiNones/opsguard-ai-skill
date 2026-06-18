@@ -514,7 +514,7 @@ function createTimeCorrectionOutput(
       summary: hasOvertime 
         ? 'Time correction request with overtime component.'
         : 'Time correction request for missed clock-in.',
-      recommendedAction: 'Draft correction ticket, route to manager for approval.',
+      recommendedAction: 'Verify the original scheduled hours, confirm manager approval, and route the time correction to the direct manager for review.',
       approver: 'Direct Manager',
       missingFields: ['Original scheduled hours', 'Manager approval'],
     },
