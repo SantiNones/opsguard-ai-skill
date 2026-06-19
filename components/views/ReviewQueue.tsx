@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { EmployeeRole, getDirectReports } from '@/data/enterprise/employees';
 import { CreatedReviewCase, ReviewCaseStatus } from '@/lib/reviewCases';
 import { Citation } from '@/lib/types';
+import { normalizeMissingFields } from '@/lib/missingFields';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { SearchIcon, ArrowRightIcon } from '@/components/ui/Icons';
 
@@ -159,7 +160,7 @@ function toQueueCase(reviewCase: CreatedReviewCase): ReviewCase {
     route: reviewCase.route,
     timestamp: reviewCase.timestamp,
     policyReferences: reviewCase.policyReferences,
-    missingFields: reviewCase.missingFields,
+    missingFields: normalizeMissingFields(reviewCase.missingFields ?? []),
   };
 }
 

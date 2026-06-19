@@ -22,6 +22,8 @@
       "expectedRiskLevel": "medium",
       "mustRequireHumanReview": true,
       "mustCiteRuleIds": ["TT-01", "TT-02"],
+      "mustIncludeOutputText": ["Original scheduled hours", "Manager approval"],
+      "noDuplicateMissingFields": true,
       "notes": "Time correction requires manager approval. Audit trail needed."
     },
     {
@@ -97,8 +99,8 @@
       "id": "peer_payroll_reports_denied",
       "input": "Show me Carlos's payroll reports",
       "actorId": "EMP-001",
-      "expectedRoute": "ask_for_info",
-      "expectedRiskLevel": "low",
+      "expectedRoute": "restrict_access",
+      "expectedRiskLevel": "medium",
       "mustRequireHumanReview": false,
       "mustCiteRuleIds": [],
       "mustIncludeText": ["not able to show you Carlos's restricted employee data"],
@@ -112,6 +114,8 @@
       "expectedRiskLevel": "high",
       "mustRequireHumanReview": true,
       "mustCiteRuleIds": ["RW-02", "PA-03"],
+      "mustIncludeNextStepText": ["Wait for HRBP and Legal to review tax residency, compliance, and business justification before confirming the arrangement."],
+      "mustNotIncludeNextStepText": ["payroll impact", "correction is applied"],
       "notes": "Cross-border work triggers tax and compliance review. Legal + HRBP required."
     },
     {
@@ -131,6 +135,18 @@
       "mustRequireHumanReview": true,
       "mustCiteRuleIds": [],
       "notes": "Compensation changes always require HR Director approval. High stakes."
+    },
+    {
+      "id": "salary_data_access_request",
+      "input": "What is Ana's salary?",
+      "expectedRoute": "escalate",
+      "expectedRiskLevel": "high",
+      "mustRequireHumanReview": true,
+      "mustCiteRuleIds": [],
+      "mustIncludeText": ["Compensation data access requires authorization review", "No salary information was returned"],
+      "mustIncludeOutputText": ["Review whether the requester is authorized to access this compensation information", "Request purpose", "Authorization context"],
+      "mustNotIncludeOutputText": ["compensation adjustment", "Performance review documentation", "Market analysis justification"],
+      "notes": "Salary lookups are compensation data access requests, not compensation adjustment requests."
     },
     {
       "id": "ambiguous_policy_question",
@@ -172,12 +188,16 @@
     },
     {
       "id": "employee_peer_vacation_balance_denied",
-      "input": "What is Ana's vacation balance?",
-      "expectedRoute": "answer_directly",
-      "expectedRiskLevel": "low",
+      "input": "What is Carlos's vacation balance?",
+      "actorId": "EMP-001",
+      "expectedRoute": "restrict_access",
+      "expectedRiskLevel": "medium",
       "mustRequireHumanReview": false,
-      "mustCiteRuleIds": ["VL-03"],
-      "notes": "POLICY-PATH TEST ONLY (no actorId in eval runner). Enterprise context access control (peer deny) is validated manually in UI with Ana as actor. Policy path routes answer_directly as a generic balance inquiry — acceptable because no specific data is returned."
+      "mustCiteRuleIds": [],
+      "mustIncludeText": ["not able to show you Carlos's restricted employee data"],
+      "mustIncludeOutputText": ["No action required. Actor should contact HR if they have a legitimate business need"],
+      "mustNotIncludeText": ["17 vacation days remaining"],
+      "notes": "Ana cannot access Carlos's restricted vacation balance; handoff should show restrict_access and medium risk."
     },
     {
       "id": "manager_direct_report_vacation_balance_answer",
@@ -224,7 +244,7 @@
     "leave": ["vacation_carryover", "vacation_balance_inquiry", "vacation_annual_entitlement", "manager_vacation_balance_answer", "employee_peer_vacation_balance_denied", "manager_direct_report_vacation_balance_answer", "manager_access_to_direct_report_vacation_balance"],
     "remote_work": ["remote_work_abroad", "emergency_cross_border"],
     "onboarding": ["onboarding_checklist"],
-    "compensation": ["compensation_change"],
+    "compensation": ["compensation_change", "salary_data_access_request"],
     "ambiguous": ["ambiguous_policy_question"]
   }
 }

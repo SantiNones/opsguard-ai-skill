@@ -92,8 +92,8 @@ export async function resolveOpsRequest(
         normalizedDeniedRequest.includes('missing time');
       const deniedOutput: ResolveOpsRequestOutput = {
         request: userRequest,
-        risk: isAttendanceDenied ? 'medium' : 'low',
-        route: isAttendanceDenied ? 'restrict_access' : 'ask_for_info',
+        risk: 'medium',
+        route: 'restrict_access',
         confidence: 'high',
         needsReview: false,
         explanation: isAttendanceDenied
@@ -420,8 +420,24 @@ function generateDeterministicOutput(
     return createRemoteAbroadOutput(request, citations, retrievedChunks);
   }
 
-  // Compensation / salary changes
-  if (normalized.includes('salary') || normalized.includes('compensation') || normalized.includes('raise') || normalized.includes('higher pay')) {
+  const isCompensationAdjustment =
+    normalized.includes('adjust') ||
+    normalized.includes('raise') ||
+    normalized.includes('higher pay') ||
+    normalized.includes('should be higher') ||
+    normalized.includes('salary increase') ||
+    normalized.includes('compensation change');
+
+  const isCompensationDataAccess =
+    normalized.includes('salary') ||
+    normalized.includes('compensation') ||
+    normalized.includes('pay');
+
+  if (isCompensationDataAccess && !isCompensationAdjustment) {
+    return createCompensationAccessOutput(request, citations);
+  }
+
+  if (isCompensationAdjustment) {
     return createCompensationEscalationOutput(request, citations);
   }
 
@@ -661,6 +677,32 @@ function createRemoteAbroadOutput(
       recommendedAction: 'Route to Legal and HRBP for compliance review.',
       approver: 'HRBP + Legal',
       missingFields: ['Tax residency documentation', 'Business justification'],
+    },
+  };
+}
+
+function createCompensationAccessOutput(
+  request: string,
+  citations: Citation[]
+): ResolveOpsRequestOutput {
+  return {
+    request,
+    risk: 'high',
+    route: 'escalate',
+    confidence: 'high',
+    needsReview: true,
+    explanation: 'Compensation data access requires authorization review. No salary information was returned.',
+    reasoning: [
+      'Salary and compensation records are sensitive employee data',
+      'Requester authorization must be verified before access is granted',
+      'No compensation data should be exposed by automated response',
+    ],
+    citations: citations.slice(0, 1),
+    reviewPacket: {
+      summary: 'Request for access to compensation information.',
+      recommendedAction: 'Review whether the requester is authorized to access this compensation information.',
+      approver: 'HR Compensation / HR Operations',
+      missingFields: ['Request purpose', 'Authorization context'],
     },
   };
 }

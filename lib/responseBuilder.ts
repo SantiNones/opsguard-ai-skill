@@ -14,6 +14,7 @@ import {
   DraftAction 
 } from './types';
 import { ConfidenceResult, isNoPolicyFound } from './confidence';
+import { normalizeMissingFields } from './missingFields';
 
 export interface DualAudienceResponse {
   employeeResponse: EmployeeResponse;
@@ -45,8 +46,8 @@ function buildEmployeeResponse(
   context?: EnterpriseContextMetadata,
   confidence?: ConfidenceResult
 ): EmployeeResponse {
-  const { route, risk, explanation, citations, reviewPacket } = output;
-  const timeNextStep = getTimeWorkflowNextStep(output, context);
+  const { route, risk, explanation, citations } = output;
+  const domainNextStep = getDomainNextStep(output, context);
   
   // Filter citations for employee visibility
   const visibleCitations = filterCitationsForEmployee(citations, context);
@@ -75,7 +76,7 @@ function buildEmployeeResponse(
         status: 'answered',
         visibleCitations: isEnterpriseAnswer ? [] : visibleCitations,
         missingFields: [],
-        nextStep: timeNextStep ?? 'No action needed',
+        nextStep: domainNextStep ?? 'No action needed',
         privacyNote: isEnterpriseAnswer
           ? 'Answer retrieved from your permissioned enterprise record.'
           : (context?.redactionsApplied || 0) > 0
@@ -97,8 +98,8 @@ function buildEmployeeResponse(
         status: 'not_allowed',
         visibleCitations,
         missingFields: [],
-        nextStep: 'Contact HR if you have a legitimate business need to request access.',
-        privacyNote: 'Access to other employees’ time entries and attendance records is restricted.',
+        nextStep: domainNextStep ?? 'Contact HR if you have a legitimate business need to request access.',
+        privacyNote: 'Access to other employees’ payroll, time entries, and employee data is restricted.',
         confidenceNote,
       };
       
@@ -111,7 +112,7 @@ function buildEmployeeResponse(
           status: 'not_allowed',
           visibleCitations: [],
           missingFields: [],
-          nextStep: 'Contact HR if you have a legitimate business need to request access.',
+          nextStep: domainNextStep ?? 'Contact HR if you have a legitimate business need to request access.',
           privacyNote: 'Access to other employees’ payroll and employee data is restricted.',
         };
       }
@@ -125,7 +126,7 @@ function buildEmployeeResponse(
         missingFields: extractMissingFields(output),
         nextStep: noPolicyFound
           ? 'Contact HR or provide more details'
-          : 'Please provide the requested information',
+          : (domainNextStep ?? 'Please provide the requested information'),
         confidenceNote,
       };
     }
@@ -138,7 +139,7 @@ function buildEmployeeResponse(
           status: 'sent_to_hr_review',
           visibleCitations: [],
           missingFields: [],
-          nextStep: timeNextStep ?? 'Wait for HR Operations or Payroll to review the payroll impact before any correction is applied.',
+          nextStep: domainNextStep ?? 'Wait for HR to contact you',
           privacyNote: 'For security, specific details are not shown here.',
         };
       } else {
@@ -148,7 +149,7 @@ function buildEmployeeResponse(
           status: 'needs_more_info',
           visibleCitations,
           missingFields: extractMissingFields(output),
-          nextStep: timeNextStep ?? 'Please provide the requested information so the workflow can continue.',
+          nextStep: domainNextStep ?? 'Please provide the requested information so the workflow can continue.',
           confidenceNote,
         };
       }
@@ -160,7 +161,7 @@ function buildEmployeeResponse(
         status: 'sent_to_hr_review',
         visibleCitations: [],
         missingFields: [],
-        nextStep: timeNextStep ?? 'Wait for HR Operations or Payroll to review the payroll impact before any correction is applied.',
+        nextStep: domainNextStep ?? 'Wait for HR to contact you',
         privacyNote: 'For security, specific details are not shown here.',
       };
       
@@ -196,7 +197,7 @@ function buildHRReviewPacket(
   return {
     riskLevel: risk,
     route,
-    requiresHumanReview: route !== 'answer_directly' || risk === 'high',
+    requiresHumanReview: route !== 'answer_directly' && route !== 'restrict_access' || risk === 'high',
     reasoning: isEnterpriseAnswer
       ? ['Answered from permissioned enterprise context (leave balance data)', ...reasoning]
       : reasoning,
@@ -220,7 +221,7 @@ function buildHRReviewPacket(
   };
 }
 
-function getTimeWorkflowNextStep(
+function getDomainNextStep(
   output: ResolveOpsRequestOutput,
   context?: EnterpriseContextMetadata
 ): string | undefined {
@@ -233,8 +234,15 @@ function getTimeWorkflowNextStep(
     request.includes('timesheet') ||
     request.includes('time correction');
 
+  const summary = output.reviewPacket?.summary.toLowerCase() ?? '';
+  const approver = output.reviewPacket?.approver.toLowerCase() ?? '';
+
   if (output.route === 'restrict_access') {
     return 'Contact HR if you have a legitimate business need to request access.';
+  }
+
+  if (summary.includes('international remote work') || approver.includes('legal') || request.includes('portugal') || request.includes('abroad')) {
+    return 'Wait for HRBP and Legal to review tax residency, compliance, and business justification before confirming the arrangement.';
   }
 
   if (draftType === 'time_correction_cutoff' || (isTimeCorrection && output.route === 'escalate')) {
@@ -289,38 +297,12 @@ function filterCitationsForEmployee(
  * Extract missing fields from output
  */
 function extractMissingFields(output: ResolveOpsRequestOutput): string[] {
-  const fields: string[] = [];
-  
-  // From draft action
-  if (output.draftAction?.missingFields) {
-    fields.push(...output.draftAction.missingFields);
-  }
-  
-  // From review packet
-  if (output.reviewPacket?.missingFields) {
-    fields.push(...output.reviewPacket.missingFields);
-  }
-  
-  // From reasoning (look for patterns)
-  const missingPatterns = [
-    /missing (.+)/gi,
-    /need (.+)/gi,
-    /provide (.+)/gi,
-    /requires (.+)/gi,
-  ];
-  
-  for (const pattern of missingPatterns) {
-    for (const reason of output.reasoning) {
-      const matches = reason.match(pattern);
-      if (matches) {
-        fields.push(...matches.map(m => m.toLowerCase()));
-      }
-    }
-  }
-  
-  // Deduplicate and clean
-  return [...new Set(fields.map(f => f.replace(/^(missing|need|provide|requires)\s+/i, '')))];
+  return normalizeMissingFields([
+    ...(output.draftAction?.missingFields ?? []),
+    ...(output.reviewPacket?.missingFields ?? []),
+  ]);
 }
+
 
 /**
  * Determine recommended owner for HR review
