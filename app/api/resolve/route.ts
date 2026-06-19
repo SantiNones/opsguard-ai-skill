@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveOpsRequest } from '@/lib/resolveOpsRequest';
-import { ResolveOpsRequestOutput, EnterpriseContextMetadata, RiskLevel, Route } from '@/lib/types';
+import { ResolveOpsRequestOutput, RiskLevel, Route } from '@/lib/types';
 import { buildDualAudienceResponse } from '@/lib/responseBuilder';
 
 export interface ResolveRequestBody {

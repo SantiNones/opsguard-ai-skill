@@ -1,4 +1,5 @@
 import { ResolveOpsRequestOutput } from './types';
+import { normalizeMissingFields } from './missingFields';
 
 export function copyToClipboard(text: string): Promise<void> {
   return navigator.clipboard.writeText(text);
@@ -25,12 +26,11 @@ function isTimeCorrectionOutput(output: ResolveOpsRequestOutput): boolean {
   return searchable.includes('time_correction') || searchable.includes('time correction') || searchable.includes('clock-in') || searchable.includes('clock in') || searchable.includes('overtime');
 }
 
-function uniqueFields(fields: string[]): string[] {
-  return Array.from(new Set(fields.filter(Boolean)));
-}
-
 function missingFields(output: ResolveOpsRequestOutput): string[] {
-  return uniqueFields(output.reviewPacket?.missingFields ?? output.draftAction?.missingFields ?? []);
+  return normalizeMissingFields([
+    ...(output.reviewPacket?.missingFields ?? []),
+    ...(output.draftAction?.missingFields ?? []),
+  ]);
 }
 
 function recommendedAction(output: ResolveOpsRequestOutput): string {
@@ -73,6 +73,8 @@ ${citationCodes(output).length > 0 ? `*Citations:* ${citationCodes(output).join(
 export function formatTeamsMessage(output: ResolveOpsRequestOutput): string {
   const riskEmoji = output.risk === 'low' ? '🟢' : output.risk === 'medium' ? '🟡' : '🔴';
   
+  const missingFields = normalizeMissingFields(output.reviewPacket?.missingFields ?? []);
+
   return `**OpsGuard Alert** ${riskEmoji}
 
 **Request:** ${output.request.slice(0, 100)}${output.request.length > 100 ? '...' : ''}
@@ -83,7 +85,7 @@ export function formatTeamsMessage(output: ResolveOpsRequestOutput): string {
 **Action:** ${output.reviewPacket?.recommendedAction || 'Review required'}
 **Approver:** ${output.reviewPacket?.approver || 'TBD'}
 
-${output.citations.length > 0 ? `**Citations:** ${output.citations.map(c => c.code).join(', ')}` : ''}`;
+${missingFields.length > 0 ? `**Missing Fields:** ${missingFields.join(', ')}\n` : ''}${output.citations.length > 0 ? `**Citations:** ${output.citations.map(c => c.code).join(', ')}` : ''}`;
 }
 
 export function formatTicket(output: ResolveOpsRequestOutput): string {

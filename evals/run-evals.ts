@@ -14,6 +14,7 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 import { resolveOpsRequest } from '../lib/resolveOpsRequest';
+import { buildDualAudienceResponse } from '../lib/responseBuilder';
 import { RiskLevel, Route } from '../lib/types';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -45,6 +46,11 @@ interface EvalCase {
   expectedAnswerSource?: 'policy' | 'enterprise_context';
   mustIncludeText?: string[];
   mustNotIncludeText?: string[];
+  mustIncludeOutputText?: string[];
+  mustNotIncludeOutputText?: string[];
+  mustIncludeNextStepText?: string[];
+  mustNotIncludeNextStepText?: string[];
+  noDuplicateMissingFields?: boolean;
   expectedPayrollReportCount?: number;
   notes?: string;
 }
@@ -104,6 +110,7 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
   try {
     const result = await resolveOpsRequest(testCase.input, testCase.actorId);
     const output = result.output;
+    const dualAudience = buildDualAudienceResponse(output, result.enterpriseContext, result.confidence);
     
     // Check route match
     const routeMatch = output.route === testCase.expectedRoute;
@@ -143,14 +150,40 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
     }
 
     const answerText = `${output.explanation} ${output.enterpriseAnswer ?? ''}`;
+    const outputText = JSON.stringify(output);
+    const nextStepText = dualAudience.employeeResponse.nextStep;
     const missingText = (testCase.mustIncludeText ?? []).filter(text => !answerText.includes(text));
     const forbiddenText = (testCase.mustNotIncludeText ?? []).filter(text => answerText.includes(text));
-    const textMatch = missingText.length === 0 && forbiddenText.length === 0;
+    const missingOutputText = (testCase.mustIncludeOutputText ?? []).filter(text => !outputText.includes(text));
+    const forbiddenOutputText = (testCase.mustNotIncludeOutputText ?? []).filter(text => outputText.includes(text));
+    const missingNextStepText = (testCase.mustIncludeNextStepText ?? []).filter(text => !nextStepText.includes(text));
+    const forbiddenNextStepText = (testCase.mustNotIncludeNextStepText ?? []).filter(text => nextStepText.includes(text));
+    const textMatch = missingText.length === 0 && forbiddenText.length === 0 && missingOutputText.length === 0 && forbiddenOutputText.length === 0 && missingNextStepText.length === 0 && forbiddenNextStepText.length === 0;
     if (missingText.length > 0) {
       errors.push(`Missing answer text: ${missingText.join(', ')}`);
     }
     if (forbiddenText.length > 0) {
       errors.push(`Forbidden answer text present: ${forbiddenText.join(', ')}`);
+    }
+    if (missingOutputText.length > 0) {
+      errors.push(`Missing output text: ${missingOutputText.join(', ')}`);
+    }
+    if (forbiddenOutputText.length > 0) {
+      errors.push(`Forbidden output text present: ${forbiddenOutputText.join(', ')}`);
+    }
+    if (missingNextStepText.length > 0) {
+      errors.push(`Missing next-step text: ${missingNextStepText.join(', ')}`);
+    }
+    if (forbiddenNextStepText.length > 0) {
+      errors.push(`Forbidden next-step text present: ${forbiddenNextStepText.join(', ')}`);
+    }
+
+    if (testCase.noDuplicateMissingFields) {
+      const missingFieldKeys = dualAudience.hrReviewPacket.missingFields.map(field => field.trim().toLowerCase());
+      const duplicateMissingFields = missingFieldKeys.filter((field, index) => missingFieldKeys.indexOf(field) !== index);
+      if (duplicateMissingFields.length > 0) {
+        errors.push(`Duplicate missing fields: ${duplicateMissingFields.join(', ')}`);
+      }
     }
 
     const payrollReportMatch = testCase.expectedPayrollReportCount === undefined ||
@@ -159,7 +192,7 @@ async function runEvalCase(testCase: EvalCase): Promise<EvalResult> {
       errors.push(`Payroll reports: expected ${testCase.expectedPayrollReportCount}, got ${output.payrollReports?.length ?? 0}`);
     }
 
-    const passed = routeMatch && riskMatch && reviewMatch && citationsMatch && answerSourceMatch && textMatch && payrollReportMatch;
+    const passed = routeMatch && riskMatch && reviewMatch && citationsMatch && answerSourceMatch && textMatch && payrollReportMatch && errors.length === 0;
     
     return {
       caseId: testCase.id,

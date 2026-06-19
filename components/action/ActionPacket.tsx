@@ -5,6 +5,7 @@ import { EmployeeRole, getEmployeeById } from '@/data/enterprise/employees';
 import { CreatedReviewCase, ReviewCaseStatus } from '@/lib/reviewCases';
 import { ResolveOpsRequestOutput } from '@/lib/types';
 import { copyToClipboard, formatSlackMessage, formatTicket } from '@/lib/copyPacket';
+import { normalizeMissingFields } from '@/lib/missingFields';
 import { ArrowRightIcon, CopyIcon, CheckIcon, DocumentIcon } from '@/components/ui/Icons';
 
 interface ActionPacketProps {
@@ -48,7 +49,7 @@ function statusFromOutput(output: ResolveOpsRequestOutput): ReviewCaseStatus {
 
 function ownerFromOutput(output: ResolveOpsRequestOutput): string {
   if (output.reviewPacket?.approver) return output.reviewPacket.approver;
-  if (output.route === 'restrict_access') return '—';
+  if (output.route === 'restrict_access') return 'None';
   if (output.route === 'escalate') return 'HR Operations';
   if (output.route === 'draft_action') return 'Manager / HR Operations';
   return '—';
@@ -128,7 +129,10 @@ export function ActionPacket({
       timestamp: now.toISOString(),
       time: 'Just now',
       policyReferences: output.citations,
-      missingFields: output.reviewPacket?.missingFields ?? output.draftAction?.missingFields ?? [],
+      missingFields: normalizeMissingFields([
+        ...(output.reviewPacket?.missingFields ?? []),
+        ...(output.draftAction?.missingFields ?? []),
+      ]),
       source: 'created_from_request_console',
     };
     onCreateReviewCase(reviewCase);
@@ -153,6 +157,7 @@ export function ActionPacket({
   }
 
   const packet = output.reviewPacket;
+  const normalizedMissingFields = normalizeMissingFields(packet?.missingFields ?? []);
 
   return (
     <div className="og-card p-5 xl:p-6 relative overflow-hidden min-w-0">
@@ -191,11 +196,11 @@ export function ActionPacket({
             </p>
           )}
         </div>
-        {packet?.missingFields && packet.missingFields.length > 0 && (
+        {normalizedMissingFields.length > 0 && (
           <div>
             <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-1">Missing fields</p>
             <ul className="text-sm text-stone-700 space-y-1">
-              {packet.missingFields.map((field, i) => (
+              {normalizedMissingFields.map((field, i) => (
                 <li key={i} className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                   {field}

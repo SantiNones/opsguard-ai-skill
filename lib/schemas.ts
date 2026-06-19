@@ -13,6 +13,7 @@ export const RouteSchema = z.enum([
   'draft_action',
   'restrict_access',
   'escalate',
+  'restrict_access',
 ]);
 
 export const ConfidenceSchema = z.enum(['low', 'medium', 'high']);
