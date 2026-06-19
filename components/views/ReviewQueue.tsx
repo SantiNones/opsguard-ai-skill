@@ -25,6 +25,7 @@ interface ReviewCase {
   route?: CreatedReviewCase['route'];
   timestamp?: string;
   policyReferences?: Citation[];
+  missingFields?: string[];
 }
 
 const mockCases: ReviewCase[] = [
@@ -39,6 +40,12 @@ const mockCases: ReviewCase[] = [
     status: 'review_required',
     summary:
       'Employee missed clock-in and worked overtime. Requires manager approval and payroll verification before correction.',
+    policyReferences: [
+      { code: 'TT-01', title: 'Missed clock-in correction', excerpt: 'Missed clock-ins must be corrected through the time tracking workflow and include the original scheduled hours.' },
+      { code: 'TT-02', title: 'Manager approval', excerpt: 'Retroactive time corrections require direct manager approval before payroll processing.' },
+      { code: 'TT-04', title: 'Audit trail', excerpt: 'All time corrections must retain an audit trail with timestamp, requester, and approver.' },
+    ],
+    missingFields: ['Original scheduled hours', 'Manager approval'],
   },
   {
     id: 'CASE-1041',
@@ -152,6 +159,7 @@ function toQueueCase(reviewCase: CreatedReviewCase): ReviewCase {
     route: reviewCase.route,
     timestamp: reviewCase.timestamp,
     policyReferences: reviewCase.policyReferences,
+    missingFields: reviewCase.missingFields,
   };
 }
 
@@ -166,6 +174,52 @@ function formatCreatedAt(timestamp?: string): string | null {
     hour: '2-digit',
     minute: '2-digit',
   })}`;
+}
+
+function formatDisplayLabel(value?: string): string {
+  if (!value) return '—';
+  const labelMap: Record<string, string> = {
+    medium: 'Medium',
+    high: 'High',
+    low: 'Low',
+    restricted: 'Restricted',
+    time_correction: 'Time Correction',
+    draft_action: 'Draft Action',
+    restrict_access: 'Restrict Access',
+    review_required: 'Review Required',
+    access_restricted: 'Access Restricted',
+  };
+  return labelMap[value] ?? value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function isTimeCorrectionCase(reviewCase: ReviewCase): boolean {
+  const searchable = `${reviewCase.request} ${reviewCase.type} ${reviewCase.summary}`.toLowerCase();
+  return searchable.includes('time correction') || searchable.includes('clock-in') || searchable.includes('clock in') || searchable.includes('overtime');
+}
+
+function uniqueFields(fields: string[]): string[] {
+  return Array.from(new Set(fields.filter(Boolean)));
+}
+
+function getMissingFields(reviewCase: ReviewCase): string[] {
+  if (reviewCase.missingFields && reviewCase.missingFields.length > 0) return uniqueFields(reviewCase.missingFields);
+  if (isTimeCorrectionCase(reviewCase)) return ['Original scheduled hours', 'Manager approval'];
+  return [];
+}
+
+function getReviewTitle(reviewCase: ReviewCase): string {
+  return isTimeCorrectionCase(reviewCase) ? 'Time Exception Review' : 'Review Case';
+}
+
+function getRecommendedAction(reviewCase: ReviewCase): string {
+  const searchable = `${reviewCase.request} ${reviewCase.type} ${reviewCase.summary}`.toLowerCase();
+  if (searchable.includes('payroll cutoff') || searchable.includes('time_correction_cutoff')) {
+    return 'Review payroll impact before applying any retroactive correction.';
+  }
+  if (isTimeCorrectionCase(reviewCase)) {
+    return 'Verify original scheduled hours, confirm manager approval, and route the correction for review.';
+  }
+  return `Review the request, verify required fields, and route to ${reviewCase.owner === '—' ? 'the appropriate owner' : reviewCase.owner}.`;
 }
 
 export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCreatedCase, onDeleteCreatedCase }: ReviewQueueProps) {
@@ -381,13 +435,14 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
         </div>
       </div>
       {openCase && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/25 backdrop-blur-sm px-4">
-          <div className="og-card w-full max-w-2xl p-6 relative overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-stone-950/25 backdrop-blur-sm p-3 sm:p-4">
+          <div className="og-card w-full max-w-3xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)] relative overflow-hidden flex flex-col">
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-400 via-brand-600 to-[#ff7a59]" />
-            <div className="flex items-start justify-between gap-4 mb-5">
-              <div>
+            <div className="flex items-start justify-between gap-4 px-4 sm:px-6 py-5 border-b border-[#eadeda] shrink-0">
+              <div className="min-w-0">
                 <p className="text-xs font-mono text-stone-400 mb-1">{openCase.id}</p>
-                <h3 className="text-xl font-black tracking-tight text-stone-950">{openCase.request}</h3>
+                <h3 className="text-xl font-black tracking-tight text-stone-950">{getReviewTitle(openCase)}</h3>
+                <p className="text-sm font-semibold text-stone-700 mt-1 break-words">{openCase.request}</p>
                 <p className="text-sm text-stone-500 mt-1">{openCase.requester} · {openCase.time}</p>
                 {formatCreatedAt(openCase.timestamp) && (
                   <p className="text-xs font-semibold text-stone-400 mt-1">{formatCreatedAt(openCase.timestamp)}</p>
@@ -400,63 +455,103 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
                 Close
               </button>
             </div>
-            <div className="grid sm:grid-cols-4 gap-3 mb-4">
-              <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3">
-                <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Risk</p>
-                <p className="text-sm font-bold text-stone-900">{openCase.risk === 'restricted' ? 'Restricted' : openCase.risk}</p>
+            <div className="overflow-y-auto og-scroll px-4 sm:px-6 py-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+                <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3 min-w-0">
+                  <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Risk</p>
+                  <p className="text-sm font-bold text-stone-900 break-words">{formatDisplayLabel(openCase.risk)}</p>
+                </div>
+                <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3 min-w-0">
+                  <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Owner</p>
+                  <p className="text-sm font-bold text-stone-900 break-words">{openCase.owner}</p>
+                  {openCase.ownerRole && (
+                    <p className="text-xs font-semibold text-stone-500 mt-0.5 break-words">
+                      {openCase.ownerRole}{openCase.ownerDepartment ? ` · ${openCase.ownerDepartment}` : ''}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3 min-w-0">
+                  <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Status</p>
+                  <p className="text-sm font-bold text-stone-900 break-words">{formatDisplayLabel(openCase.status)}</p>
+                </div>
+                {openCase.route && (
+                  <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3 min-w-0">
+                    <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Route</p>
+                    <p className="text-sm font-bold text-stone-900 break-words">{formatDisplayLabel(openCase.route)}</p>
+                  </div>
+                )}
+                <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3 min-w-0">
+                  <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Type</p>
+                  <p className="text-sm font-bold text-stone-900 break-words">{formatDisplayLabel(openCase.type)}</p>
+                </div>
               </div>
-              <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3">
-                <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Owner</p>
-                <p className="text-sm font-bold text-stone-900">{openCase.owner}</p>
-                {openCase.ownerRole && (
-                  <p className="text-xs font-semibold text-stone-500 mt-0.5">
-                    {openCase.ownerRole}{openCase.ownerDepartment ? ` · ${openCase.ownerDepartment}` : ''}
-                  </p>
+              {isTimeCorrectionCase(openCase) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-white/75 border border-[#eadeda] p-3 min-w-0">
+                    <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Case Type</p>
+                    <p className="text-sm font-bold text-stone-900">Time Correction</p>
+                  </div>
+                  <div className="rounded-xl bg-white/75 border border-[#eadeda] p-3 min-w-0">
+                    <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Required Approval</p>
+                    <p className="text-sm font-bold text-stone-900">Direct Manager</p>
+                  </div>
+                  <div className="rounded-xl bg-white/75 border border-[#eadeda] p-3 min-w-0">
+                    <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Payroll Impact</p>
+                    <p className="text-sm font-bold text-stone-900">Potential payroll-impacting correction</p>
+                  </div>
+                  <div className="rounded-xl bg-white/75 border border-[#eadeda] p-3 min-w-0">
+                    <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Audit Requirement</p>
+                    <p className="text-sm font-bold text-stone-900">Original entry, corrected entry, approver, timestamp, and reason must be logged</p>
+                  </div>
+                </div>
+              )}
+              <div className="rounded-2xl bg-white/75 border border-[#eadeda] p-4">
+                <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-1">Summary</p>
+                <p className="text-sm text-stone-700 leading-relaxed">{openCase.summary}</p>
+              </div>
+              {getMissingFields(openCase).length > 0 && (
+                <div className="rounded-2xl bg-amber-50/80 border border-amber-100 p-4">
+                  <p className="text-[11px] text-amber-700 uppercase tracking-wide mb-2 font-bold">Missing fields</p>
+                  <div className="flex flex-wrap gap-2">
+                    {getMissingFields(openCase).map((field) => (
+                      <span key={field} className="inline-flex max-w-full items-center rounded-full border border-amber-200 bg-white/70 px-2.5 py-1 text-xs font-semibold text-amber-800 break-words">
+                        {field}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="rounded-2xl bg-white/75 border border-[#eadeda] p-4">
+                <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-2">Policy references</p>
+                {openCase.policyReferences && openCase.policyReferences.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {openCase.policyReferences.slice(0, 4).map((ref) => (
+                      <div key={ref.code} className="flex flex-col sm:flex-row gap-2 text-sm min-w-0">
+                        <span className="inline-flex w-fit min-w-[3.25rem] shrink-0 justify-center whitespace-nowrap font-mono font-bold text-brand-700 bg-brand-50 border border-brand-100 rounded-md px-2 py-0.5 h-fit">
+                          {ref.code}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-bold text-stone-800 break-words">{ref.title}</p>
+                          <p className="text-xs text-stone-500 leading-relaxed">{ref.excerpt}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs font-medium text-stone-400">No policy references captured for this case.</p>
                 )}
               </div>
-              <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3">
-                <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Status</p>
-                <p className="text-sm font-bold text-stone-900">{statusLabels[openCase.status]}</p>
+              <div className="rounded-2xl bg-brand-50/70 border border-brand-100 p-4">
+                <p className="text-[11px] text-brand-500 uppercase tracking-wide mb-1">Recommended action</p>
+                <p className="text-sm font-semibold text-brand-800 leading-relaxed">
+                  {getRecommendedAction(openCase)}
+                </p>
+                {openCase.source === 'created_from_request_console' && (
+                  <p className="mt-2 text-xs font-semibold text-brand-600">Source: created from Request Console</p>
+                )}
               </div>
-              <div className="rounded-xl bg-[#fff7f5] border border-[#eadeda] p-3">
-                <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Type</p>
-                <p className="text-sm font-bold text-stone-900">{openCase.type}</p>
-              </div>
             </div>
-            <div className="rounded-2xl bg-white/75 border border-[#eadeda] p-4 mb-3">
-              <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-1">Summary</p>
-              <p className="text-sm text-stone-700 leading-relaxed">{openCase.summary}</p>
-            </div>
-            <div className="rounded-2xl bg-white/75 border border-[#eadeda] p-4 mb-3">
-              <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-2">Policy references</p>
-              {openCase.policyReferences && openCase.policyReferences.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  {openCase.policyReferences.slice(0, 4).map((ref) => (
-                    <div key={ref.code} className="flex gap-2 text-sm">
-                      <span className="font-mono font-bold text-brand-700 bg-brand-50 border border-brand-100 rounded-md px-1.5 py-0.5 h-fit">
-                        {ref.code}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-bold text-stone-800">{ref.title}</p>
-                        <p className="text-xs text-stone-500 line-clamp-2">{ref.excerpt}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs font-medium text-stone-400">No policy references captured for this case.</p>
-              )}
-            </div>
-            <div className="rounded-2xl bg-brand-50/70 border border-brand-100 p-4">
-              <p className="text-[11px] text-brand-500 uppercase tracking-wide mb-1">Recommended action</p>
-              <p className="text-sm font-semibold text-brand-800">
-                Review the request, verify required fields, and route to {openCase.owner === '—' ? 'the appropriate owner' : openCase.owner}.
-              </p>
-              {openCase.source === 'created_from_request_console' && (
-                <p className="mt-2 text-xs font-semibold text-brand-600">Source: created from Request Console</p>
-              )}
-            </div>
-            <div className="mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-[#eadeda] pt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-[#eadeda] px-4 sm:px-6 py-4 shrink-0 bg-white/85">
               <button
                 onClick={() => handleResolveCase(openCase)}
                 className="og-btn-primary flex items-center justify-center px-4 py-2.5 text-sm"

@@ -62,7 +62,7 @@ export const scenarioGroups: ScenarioGroup[] = [
     ],
   },
   {
-    group: 'Draft action',
+    group: 'Time Operations',
     color: 'text-blue-700',
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-300',
@@ -78,6 +78,18 @@ export const scenarioGroups: ScenarioGroup[] = [
         text: 'I forgot to clock in yesterday and worked 2 hours overtime. How do I report this?',
         persona: 'EMP-001',
         expectedOutcome: 'draft_action',
+      },
+      {
+        label: 'Payroll cutoff risk',
+        text: 'Can you correct my timesheet from last month? Payroll is closing today.',
+        persona: 'EMP-001',
+        expectedOutcome: 'escalate',
+      },
+      {
+        label: 'Team member attendance',
+        text: 'Show me Carlos’s time entries from this week.',
+        persona: 'EMP-001',
+        expectedOutcome: 'restrict_access',
       },
     ],
   },

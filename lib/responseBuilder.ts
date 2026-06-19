@@ -46,6 +46,7 @@ function buildEmployeeResponse(
   confidence?: ConfidenceResult
 ): EmployeeResponse {
   const { route, risk, explanation, citations, reviewPacket } = output;
+  const timeNextStep = getTimeWorkflowNextStep(output, context);
   
   // Filter citations for employee visibility
   const visibleCitations = filterCitationsForEmployee(citations, context);
@@ -74,7 +75,7 @@ function buildEmployeeResponse(
         status: 'answered',
         visibleCitations: isEnterpriseAnswer ? [] : visibleCitations,
         missingFields: [],
-        nextStep: 'No action needed',
+        nextStep: timeNextStep ?? 'No action needed',
         privacyNote: isEnterpriseAnswer
           ? 'Answer retrieved from your permissioned enterprise record.'
           : (context?.redactionsApplied || 0) > 0
@@ -89,6 +90,18 @@ function buildEmployeeResponse(
       };
     }
       
+    case 'restrict_access':
+      return {
+        title: 'Access Restricted',
+        message: explanation,
+        status: 'not_allowed',
+        visibleCitations,
+        missingFields: [],
+        nextStep: 'Contact HR if you have a legitimate business need to request access.',
+        privacyNote: 'Access to other employees’ time entries and attendance records is restricted.',
+        confidenceNote,
+      };
+      
     case 'ask_for_info': {
       const isAccessDenied = output.reviewPacket?.summary?.startsWith('Access restricted:');
       if (isAccessDenied) {
@@ -98,7 +111,7 @@ function buildEmployeeResponse(
           status: 'not_allowed',
           visibleCitations: [],
           missingFields: [],
-          nextStep: 'Contact HR directly if you have a legitimate business need',
+          nextStep: 'Contact HR if you have a legitimate business need to request access.',
           privacyNote: 'Access to other employees’ payroll and employee data is restricted.',
         };
       }
@@ -125,7 +138,7 @@ function buildEmployeeResponse(
           status: 'sent_to_hr_review',
           visibleCitations: [],
           missingFields: [],
-          nextStep: 'Wait for HR to contact you',
+          nextStep: timeNextStep ?? 'Wait for HR Operations or Payroll to review the payroll impact before any correction is applied.',
           privacyNote: 'For security, specific details are not shown here.',
         };
       } else {
@@ -135,7 +148,7 @@ function buildEmployeeResponse(
           status: 'needs_more_info',
           visibleCitations,
           missingFields: extractMissingFields(output),
-          nextStep: 'Please complete the required steps',
+          nextStep: timeNextStep ?? 'Please provide the requested information so the workflow can continue.',
           confidenceNote,
         };
       }
@@ -147,7 +160,7 @@ function buildEmployeeResponse(
         status: 'sent_to_hr_review',
         visibleCitations: [],
         missingFields: [],
-        nextStep: 'Wait for HR to contact you',
+        nextStep: timeNextStep ?? 'Wait for HR Operations or Payroll to review the payroll impact before any correction is applied.',
         privacyNote: 'For security, specific details are not shown here.',
       };
       
@@ -205,6 +218,41 @@ function buildHRReviewPacket(
     confidenceScore: confidence?.confidenceScore,
     confidenceReasons: confidence?.confidenceReasons,
   };
+}
+
+function getTimeWorkflowNextStep(
+  output: ResolveOpsRequestOutput,
+  context?: EnterpriseContextMetadata
+): string | undefined {
+  const request = output.request.toLowerCase();
+  const draftType = output.draftAction?.type;
+  const isTimeCorrection =
+    draftType === 'time_correction' ||
+    draftType === 'time_correction_cutoff' ||
+    request.includes('clock') ||
+    request.includes('timesheet') ||
+    request.includes('time correction');
+
+  if (output.route === 'restrict_access') {
+    return 'Contact HR if you have a legitimate business need to request access.';
+  }
+
+  if (draftType === 'time_correction_cutoff' || (isTimeCorrection && output.route === 'escalate')) {
+    return 'Wait for HR Operations or Payroll to review the payroll impact before any correction is applied.';
+  }
+
+  if (output.answerSource === 'enterprise_context' && request.includes('time entries')) {
+    return 'Use this permissioned attendance exception summary only; payroll-sensitive details are not included.';
+  }
+
+  if (draftType === 'time_correction') {
+    if (context?.actor?.role === 'manager') {
+      return 'Review the requested correction, confirm the original scheduled hours, and approve or reject the request.';
+    }
+    return 'Submit the original scheduled hours and wait for your manager to review the correction.';
+  }
+
+  return undefined;
 }
 
 /**

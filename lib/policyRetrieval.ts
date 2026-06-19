@@ -66,7 +66,7 @@ const DOMAIN_METADATA: Record<string, {
   TT: {
     domain: 'time-tracking',
     sensitivity: 'medium',
-    keywords: ['clock', 'time', 'overtime', 'hours', 'tracking', 'missed', 'correction', 'retroactive', 'portal', 'timesheet'],
+    keywords: ['clock', 'time', 'overtime', 'hours', 'tracking', 'missed', 'correction', 'retroactive', 'portal', 'timesheet', 'attendance', 'entries', 'exception', 'cutoff'],
   },
   PA: {
     domain: 'payroll',
@@ -231,8 +231,11 @@ function getRuleBoost(query: string, ruleId: string): number {
   const q = query.toLowerCase();
   const boosts: Array<[string, (q: string) => boolean]> = [
     ['TT-01', q => q.includes('clock') || q.includes('forgot') || q.includes('missed') || q.includes('clock in') || q.includes('recorded') || q.includes("wasn't recorded")],
-    ['TT-02', q => q.includes('clock') || (q.includes('manager') && q.includes('time'))],
+    ['TT-02', q => q.includes('clock') || (q.includes('manager') && q.includes('time')) || ((q.includes('timesheet') || q.includes('correct')) && (q.includes('payroll') || q.includes('cutoff') || q.includes('closing')))],
     ['TT-03', q => q.includes('overtime')],
+    ['TT-04', q => q.includes('audit') || q.includes('exception') || q.includes('exceptions') || q.includes('time entries') || q.includes('missing time') || ((q.includes('timesheet') || q.includes('correct')) && (q.includes('payroll') || q.includes('cutoff') || q.includes('closing')))],
+    ['TT-05', q => (q.includes('carlos') || q.includes('another employee') || q.includes('peer')) && (q.includes('time entries') || q.includes('attendance'))],
+    ['TT-06', q => (q.includes('payroll') || q.includes('cutoff') || q.includes('closing')) && (q.includes('timesheet') || q.includes('time correction') || q.includes('correct'))],
     ['PA-01', q => q.includes('cutoff') || (q.includes('bank') && q.includes('payroll'))],
     ['PA-02', q => q.includes('adjustment') || q.includes('evidence') || q.includes('documentation')],
     ['PA-03', q => q.includes('cross-border') || q.includes('abroad') || q.includes('portugal') || q.includes('mexico') || q.includes('tax')],

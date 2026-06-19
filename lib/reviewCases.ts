@@ -22,6 +22,7 @@ export interface CreatedReviewCase {
   timestamp: string;
   time: string;
   policyReferences?: Citation[];
+  missingFields?: string[];
   source: 'created_from_request_console';
 }
 

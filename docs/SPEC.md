@@ -16,7 +16,7 @@ OpsGuard is a risk-aware AI Skill that helps HR Operations teams analyze sensiti
 
 ## 2. Target User
 
-**Primary:** HR Operations Specialists, HR Business Partners (HRBPs), Payroll Operations
+**Primary:** HR Operations Specialists, HR Business Partners (HRBPs), Payroll Operations, and Employees. 
 
 **Context:**
 - Processes 20-100 employee requests per day

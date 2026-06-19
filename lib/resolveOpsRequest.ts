@@ -85,22 +85,39 @@ export async function resolveOpsRequest(
     // Access-denied: query targeted a specific employee but actor lacks permission.
     // Return a clear restriction response; do not fall through to the policy path.
     if (!dataAnswer.answered && dataAnswer.accessDenied) {
+      const normalizedDeniedRequest = userRequest.toLowerCase();
+      const isAttendanceDenied =
+        normalizedDeniedRequest.includes('time entries') ||
+        normalizedDeniedRequest.includes('attendance') ||
+        normalizedDeniedRequest.includes('missing time');
       const deniedOutput: ResolveOpsRequestOutput = {
         request: userRequest,
-        risk: 'low',
-        route: 'ask_for_info',
+        risk: isAttendanceDenied ? 'medium' : 'low',
+        route: isAttendanceDenied ? 'restrict_access' : 'ask_for_info',
         confidence: 'high',
         needsReview: false,
-        explanation: `I'm not able to show you ${dataAnswer.targetFirstName}'s restricted employee data. Payroll and employee records are only shown when you have the required permission. Please contact HR directly if you have a legitimate need.`,
-        reasoning: [
-          `Access denied: actor role (${enterpriseContext?.actor.role}) is not permitted to view restricted data for ${dataAnswer.targetFirstName}`,
-          'Restricted employee data requires an approved access relationship',
-          'No restricted employee data was returned',
-        ],
-        citations: [],
+        explanation: isAttendanceDenied
+          ? `I'm not able to show you ${dataAnswer.targetFirstName}'s time entries or attendance records. Employees cannot access another employee's time entries unless they have an authorized HR, Payroll, or manager role for that employee.`
+          : `I'm not able to show you ${dataAnswer.targetFirstName}'s restricted employee data. Payroll and employee records are only shown when you have the required permission. Please contact HR directly if you have a legitimate need.`,
+        reasoning: isAttendanceDenied
+          ? [
+              `Access denied: actor role (${enterpriseContext?.actor.role}) is not permitted to view attendance records for ${dataAnswer.targetFirstName}`,
+              'Peer attendance records require an authorized HR, Payroll, or direct-manager relationship',
+              'No peer attendance payload or private employee data was returned',
+            ]
+          : [
+              `Access denied: actor role (${enterpriseContext?.actor.role}) is not permitted to view restricted data for ${dataAnswer.targetFirstName}`,
+              'Restricted employee data requires an approved access relationship',
+              'No restricted employee data was returned',
+            ],
+        citations: isAttendanceDenied
+          ? [{ code: 'TT-05', title: 'Peer Attendance Privacy', excerpt: 'Employees cannot access another employee\'s time entries or attendance records unless they have an authorized HR, Payroll, or manager role for that employee.' }]
+          : [],
         reviewPacket: {
-          summary: `Access restricted: actor attempted to view restricted employee data for ${dataAnswer.targetFirstName} without permission.`,
-          recommendedAction: 'No action required. Actor should contact HR if they have a legitimate business need.',
+          summary: `Access restricted: actor attempted to view ${isAttendanceDenied ? 'peer attendance records' : 'restricted employee data'} for ${dataAnswer.targetFirstName} without permission.`,
+          recommendedAction: isAttendanceDenied
+            ? 'Contact HR if there is a legitimate business need to request access.'
+            : 'No action required. Actor should contact HR if they have a legitimate business need.',
           approver: 'None',
           missingFields: [],
         },
@@ -143,15 +160,21 @@ export async function resolveOpsRequest(
         reasoning: [
           'Query answered from permissioned enterprise context data',
           `Source: enterprise record for ${dataAnswer.targetName}`,
-          'No policy citation required — data is directly accessible',
+          dataAnswer.isAttendanceExceptionAnswer
+            ? 'Answer limited to permissioned attendance exceptions; payroll-sensitive details are not shown'
+            : 'No policy citation required — data is directly accessible',
         ],
-        citations: [],
+        citations: dataAnswer.isAttendanceExceptionAnswer
+          ? [{ code: 'TT-04', title: 'Audit Trail', excerpt: 'All time corrections must be logged with timestamp, original entry, corrected entry, approver, and reason.' }]
+          : [],
         answerSource: 'enterprise_context',
         enterpriseAnswer: dataAnswer.answer,
         payrollReports: dataAnswer.payrollReports,
         reviewPacket: {
           summary: `Enterprise context answer: ${dataAnswer.dataPoints.join(', ')}`,
-          recommendedAction: 'No action required — informational answer from permissioned data.',
+          recommendedAction: dataAnswer.isAttendanceExceptionAnswer
+            ? 'Review the permitted attendance exception summary only; do not expose payroll-sensitive details.'
+            : 'No action required — informational answer from permissioned data.',
           approver: 'None',
           missingFields: [],
         },
@@ -374,6 +397,14 @@ function generateDeterministicOutput(
     return createVacationEntitlementOutput(request, citations);
   }
 
+  const isPayrollCutoffTimeCorrection =
+    (normalized.includes('timesheet') || normalized.includes('time correction') || normalized.includes('correct')) &&
+    (normalized.includes('payroll') || normalized.includes('cutoff') || normalized.includes('closing'));
+
+  if (isPayrollCutoffTimeCorrection) {
+    return createPayrollCutoffTimeCorrectionOutput(request, citations, retrievedChunks);
+  }
+
   if (normalized.includes('clock') || (normalized.includes('overtime') && normalized.includes('forget'))) {
     return createTimeCorrectionOutput(request, citations, retrievedChunks);
   }
@@ -514,9 +545,60 @@ function createTimeCorrectionOutput(
       summary: hasOvertime 
         ? 'Time correction request with overtime component.'
         : 'Time correction request for missed clock-in.',
-      recommendedAction: 'Draft correction ticket, route to manager for approval.',
+      recommendedAction: 'Verify original scheduled hours, confirm manager approval, and route the correction for review.',
       approver: 'Direct Manager',
       missingFields: ['Original scheduled hours', 'Manager approval'],
+    },
+  };
+}
+
+function createPayrollCutoffTimeCorrectionOutput(
+  request: string,
+  citations: Citation[],
+  retrievedChunks: PolicyChunk[]
+): ResolveOpsRequestOutput {
+  const requiredCitations: Citation[] = [
+    citations.find(c => c.code === 'TT-02') ?? {
+      code: 'TT-02',
+      title: 'Manager Approval Required',
+      excerpt: 'All retroactive time entry modifications require documented manager approval.',
+    },
+    citations.find(c => c.code === 'TT-04') ?? {
+      code: 'TT-04',
+      title: 'Audit Trail',
+      excerpt: 'All time corrections must be logged with timestamp, original entry, corrected entry, approver, and reason.',
+    },
+    citations.find(c => c.code === 'TT-06') ?? {
+      code: 'TT-06',
+      title: 'Payroll Cutoff Risk',
+      excerpt: 'Time corrections submitted near payroll cutoff or after the payroll period has closed require HR Operations or Payroll review before any change is applied.',
+    },
+  ];
+
+  return {
+    request,
+    risk: 'high',
+    route: 'escalate',
+    confidence: 'high',
+    needsReview: true,
+    explanation: 'Retroactive time correction near payroll cutoff may affect compensation and requires urgent HR Operations or Payroll Operations review.',
+    reasoning: [
+      'Retroactive timesheet correction may affect compensation',
+      'Payroll is closing today, creating cutoff risk',
+      'Audit trail and manager approval are required before any change is applied',
+    ],
+    citations: requiredCitations,
+    draftAction: {
+      type: 'time_correction_cutoff',
+      description: 'Escalate retroactive timesheet correction near payroll cutoff for urgent review.',
+      approver: 'HR Operations / Payroll Operations',
+      missingFields: ['Original scheduled hours', 'Manager approval', 'Payroll cutoff status'],
+    },
+    reviewPacket: {
+      summary: 'Payroll cutoff risk for retroactive time correction.',
+      recommendedAction: 'Review payroll impact before applying any retroactive correction.',
+      approver: 'HR Operations / Payroll Operations',
+      missingFields: ['Original scheduled hours', 'Manager approval', 'Payroll cutoff status'],
     },
   };
 }

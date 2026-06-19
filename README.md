@@ -48,6 +48,37 @@ For every request, OpsGuard:
 | HR Ops opens a case in Review Queue | — | Sees owner, timestamp, policy references, and can resolve or delete |
 | “I want to work from Portugal for 3 weeks” | escalate | Immediate HR specialist handoff |
 
+## Time Operations Pack
+
+OpsGuard now includes a focused Time Operations Pack for realistic HR and Time Operations exceptions: missed clock-ins, overtime corrections, payroll cutoff risk, and team member attendance access.
+
+| Scenario | Route | Safe Outcome |
+|----------|-------|--------------|
+| Missed clock-in | draft_action | Manager review before correction |
+| Overtime correction | draft_action | Manager / HR review before approval |
+| Payroll cutoff risk | escalate | HR Operations / Payroll review before any change is applied |
+| Team member attendance as employee | restrict_access | No private attendance data exposed |
+| Team member attendance as manager | answer_directly | Permissioned attendance exceptions only |
+
+Safety patterns demonstrated:
+
+- role-based access control before returning employee data
+- policy citations for explainable routing decisions
+- human-in-the-loop review for medium-risk corrections
+- payroll-risk escalation near cutoff windows
+- privacy-preserving responses for denied peer access
+- eval-backed behavior across routing, retrieval, and confidence cases
+
+Current validation snapshot:
+
+- Core evals: 20/20
+- Retrieval evals: 14/14
+- Confidence evals: 8/8
+- Build: passing
+- Lint: passing with existing warnings only
+
+Production readiness note: this is a prototype of safe AI routing for HR / Time Operations, not a production system. A production version would require real SSO/auth, HRIS and Time integrations, API/tool-level permission checks, audit logs, observability, expanded evals from real customer edge cases, and approval gates before write actions.
+
 ## Architecture
 
 Request  
@@ -91,7 +122,7 @@ Retrieval features:
 - Whole-word matching with policy-domain boosts
 - Context budget of 1800 tokens
 - Citation eligibility validation
-- Retrieval evals: 12/12 cases, Recall@5 = 100%
+- Retrieval evals: 14/14 cases, Recall@5 = 100%
 
 The Knowledge Base allows users to browse policies by domain, inspect rule IDs, and search across policy titles and text.
 
@@ -153,8 +184,8 @@ The UI does not toggle production environment variables. Resolver mode is contro
 
 Three eval suites validate routing, retrieval, and confidence behavior:
 
-npm run eval — 15/15, route, risk, review, citations  
-npm run eval:retrieval — 12/12, Recall@5, forbidden violations  
+npm run eval — 20/20, route, risk, review, citations  
+npm run eval:retrieval — 14/14, Recall@5, forbidden violations  
 npm run eval:confidence — 8/8, confidence, no-policy, sensitive escalation
 
 All evals run deterministically with no OpenAI calls unless explicitly enabled.

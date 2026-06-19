@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveOpsRequest } from '@/lib/resolveOpsRequest';
-import { ResolveOpsRequestOutput, EnterpriseContextMetadata } from '@/lib/types';
+import { ResolveOpsRequestOutput, EnterpriseContextMetadata, RiskLevel, Route } from '@/lib/types';
 import { buildDualAudienceResponse } from '@/lib/responseBuilder';
 
 export interface ResolveRequestBody {
@@ -44,8 +44,8 @@ export interface ResolveResponse {
       privacyNote?: string;
     };
     hrReviewPacket?: {
-      riskLevel: 'low' | 'medium' | 'high';
-      route: 'answer_directly' | 'ask_for_info' | 'draft_action' | 'escalate';
+      riskLevel: RiskLevel;
+      route: Route;
       requiresHumanReview: boolean;
       reasoning: string[];
       missingFields: string[];

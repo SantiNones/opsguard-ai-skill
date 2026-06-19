@@ -28,6 +28,7 @@ const routeLabel: Record<string, string> = {
   answer_directly: 'Answer',
   ask_for_info: 'Ask for info',
   draft_action: 'Draft action',
+  restrict_access: 'Restrict access',
   escalate: 'Escalate',
 };
 
@@ -39,6 +40,7 @@ const roleLabel: Record<EmployeeRole, string> = {
 };
 
 function statusFromOutput(output: ResolveOpsRequestOutput): ReviewCaseStatus {
+  if (output.route === 'restrict_access') return 'access_restricted';
   if (output.route === 'escalate') return 'escalated';
   if (output.needsReview || output.route === 'draft_action') return 'review_required';
   return 'answered';
@@ -46,6 +48,7 @@ function statusFromOutput(output: ResolveOpsRequestOutput): ReviewCaseStatus {
 
 function ownerFromOutput(output: ResolveOpsRequestOutput): string {
   if (output.reviewPacket?.approver) return output.reviewPacket.approver;
+  if (output.route === 'restrict_access') return '—';
   if (output.route === 'escalate') return 'HR Operations';
   if (output.route === 'draft_action') return 'Manager / HR Operations';
   return '—';
@@ -68,8 +71,10 @@ function resolveOwnerDetails(output: ResolveOpsRequestOutput, actorId: string) {
 }
 
 function typeFromOutput(output: ResolveOpsRequestOutput): string {
+  if (output.draftAction?.type === 'time_correction') return 'Time Correction';
   if (output.draftAction?.type) return output.draftAction.type;
   if (output.answerSource === 'enterprise_context') return 'Live data lookup';
+  if (output.route === 'restrict_access') return 'Data access';
   if (output.route === 'escalate') return 'Escalation';
   return 'Policy guidance';
 }
@@ -123,6 +128,7 @@ export function ActionPacket({
       timestamp: now.toISOString(),
       time: 'Just now',
       policyReferences: output.citations,
+      missingFields: output.reviewPacket?.missingFields ?? output.draftAction?.missingFields ?? [],
       source: 'created_from_request_console',
     };
     onCreateReviewCase(reviewCase);
