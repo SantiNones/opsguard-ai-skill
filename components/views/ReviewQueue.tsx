@@ -185,6 +185,7 @@ function formatDisplayLabel(value?: string): string {
     restricted: 'Restricted',
     time_correction: 'Time Correction',
     draft_action: 'Draft Action',
+    restrict_access: 'Restrict Access',
     review_required: 'Review Required',
     access_restricted: 'Access Restricted',
   };
@@ -211,8 +212,12 @@ function getReviewTitle(reviewCase: ReviewCase): string {
 }
 
 function getRecommendedAction(reviewCase: ReviewCase): string {
+  const searchable = `${reviewCase.request} ${reviewCase.type} ${reviewCase.summary}`.toLowerCase();
+  if (searchable.includes('payroll cutoff') || searchable.includes('time_correction_cutoff')) {
+    return 'Review payroll impact before applying any retroactive correction.';
+  }
   if (isTimeCorrectionCase(reviewCase)) {
-    return `Verify the original scheduled hours, confirm manager approval, and route the time correction to ${reviewCase.owner === '—' ? 'the appropriate owner' : reviewCase.owner} for review.`;
+    return 'Verify original scheduled hours, confirm manager approval, and route the correction for review.';
   }
   return `Review the request, verify required fields, and route to ${reviewCase.owner === '—' ? 'the appropriate owner' : reviewCase.owner}.`;
 }

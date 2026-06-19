@@ -27,6 +27,7 @@ export interface EnterpriseDataAnswer {
   targetName: string;
   isSelf: boolean;
   payrollReports?: PayrollReport[];
+  isAttendanceExceptionAnswer?: boolean;
 }
 
 export interface EnterpriseDataDenied {
@@ -54,6 +55,20 @@ function canAccessLeaveBalance(
 ): boolean {
   if (actorId === targetId) return true;
   if (actorRole === 'hr_ops') return true;
+  if (actorRole === 'manager') {
+    const access = determineAccess(actorId, targetId);
+    return access.isDirectReport;
+  }
+  return false;
+}
+
+function canAccessAttendanceExceptions(
+  actorId: string,
+  targetId: string,
+  actorRole: string
+): boolean {
+  if (actorId === targetId) return true;
+  if (actorRole === 'hr_ops' || actorRole === 'payroll_admin') return true;
   if (actorRole === 'manager') {
     const access = determineAccess(actorId, targetId);
     return access.isDirectReport;
@@ -118,6 +133,10 @@ export function tryEnterpriseContextAnswer(
     !isActionRequest &&
     q.includes('clock') && (q.includes('status') || q.includes('last clock') || q.includes('last clock-in'));
 
+  const isAttendanceQuery =
+    (q.includes('time entries') || q.includes('attendance') || q.includes('missing time')) &&
+    (q.includes('show') || q.includes('view') || q.includes('see') || q.includes('missing'));
+
   const isPayrollReportQuery =
     (
       q.includes('payroll report') ||
@@ -142,7 +161,7 @@ export function tryEnterpriseContextAnswer(
       q.includes('view')
     );
 
-  if (!isVacationBalanceQuery && !isLeaveStatusQuery && !isClockStatusQuery && !isPayrollReportQuery) {
+  if (!isVacationBalanceQuery && !isLeaveStatusQuery && !isClockStatusQuery && !isPayrollReportQuery && !isAttendanceQuery) {
     return { answered: false };
   }
 
@@ -158,7 +177,16 @@ export function tryEnterpriseContextAnswer(
     };
   }
 
-  if (!isPayrollReportQuery && !canAccessLeaveBalance(actorId, targetId, enterpriseContext.actor.role)) {
+  if (isAttendanceQuery && !canAccessAttendanceExceptions(actorId, targetId, enterpriseContext.actor.role)) {
+    const deniedTarget = getEmployeeById(targetId);
+    return {
+      answered: false,
+      accessDenied: true,
+      targetFirstName: deniedTarget?.name.split(' ')[0] ?? 'that employee',
+    };
+  }
+
+  if (!isPayrollReportQuery && !isAttendanceQuery && !canAccessLeaveBalance(actorId, targetId, enterpriseContext.actor.role)) {
     // If the query was for a SPECIFIC other employee, signal access denied explicitly
     // so the resolver can return a clear restriction message instead of a policy fallthrough.
     if (actorId !== targetId) {
@@ -222,6 +250,19 @@ export function tryEnterpriseContextAnswer(
   const leave = getLeaveStatus(targetId);
   if (!leave) return { answered: false };
 
+  if (isAttendanceQuery) {
+    const statusLabel: Record<string, string> = {
+      'on-time': 'no missing attendance exceptions recorded this week',
+      late: 'late clock-in exception recorded this week',
+      missed: 'missing time entry exception recorded this week',
+      remote: 'remote-work attendance status recorded this week',
+    };
+    const subjectHas = isSelf ? 'You have' : `${targetName} has`;
+    parts.push(`${subjectHas} ${statusLabel[leave.lastClockInStatus] ?? 'attendance exception status available'}. This answer is limited to permissioned attendance exceptions; no payroll-sensitive details are shown.`);
+    dataPoints.push(`Attendance exception: ${leave.lastClockInStatus}`);
+    dataPoints.push('Access scope: attendance exceptions only');
+  }
+
   if (isVacationBalanceQuery) {
     const pending = leave.pendingLeaveRequests > 0
       ? ` (${leave.pendingLeaveRequests} request${leave.pendingLeaveRequests > 1 ? 's' : ''} pending approval)`
@@ -264,5 +305,6 @@ export function tryEnterpriseContextAnswer(
     dataPoints,
     targetName: isSelf ? 'self' : targetEmp.name,
     isSelf,
+    isAttendanceExceptionAnswer: isAttendanceQuery,
   };
 }

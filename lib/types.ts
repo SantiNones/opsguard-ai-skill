@@ -4,6 +4,7 @@ export type Route =
   | 'answer_directly' 
   | 'ask_for_info' 
   | 'draft_action' 
+  | 'restrict_access'
   | 'escalate';
 
 export interface Citation {

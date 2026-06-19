@@ -63,6 +63,26 @@ Ensure accurate time recording for payroll, compliance, and workforce management
 
 ---
 
+### TT-05: Peer Attendance Privacy
+
+**Rule:** Employees cannot access another employee's time entries or attendance records unless they have an authorized HR, Payroll, or manager role for that employee.
+
+**Restriction:** Peer attendance lookups must not return time entry details, attendance exceptions, clock-in records, or payroll-sensitive data.
+
+**Allowed Access:** Managers may view attendance exceptions for their direct reports. HR Operations and Payroll Operations may access records only for authorized operational workflows.
+
+---
+
+### TT-06: Payroll Cutoff Risk
+
+**Rule:** Time corrections submitted near payroll cutoff or after the payroll period has closed require HR Operations or Payroll review before any change is applied.
+
+**Rationale:** Retroactive time changes near payroll cutoff may affect compensation, taxes, overtime calculations, and the payroll audit trail.
+
+**Procedure:** Route urgent cutoff-risk corrections to HR Operations or Payroll Operations before applying any update.
+
+---
+
 ## Examples
 
 ### Valid Correction

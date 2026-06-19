@@ -32,6 +32,22 @@
     "notes": "Overtime correction — all three TT rules expected"
   },
   {
+    "id": "payroll_cutoff_time_correction_retrieval",
+    "query": "Can you correct my timesheet from last month? Payroll is closing today.",
+    "expectedRuleIds": ["TT-02", "TT-04", "TT-06"],
+    "forbiddenRuleIds": ["VL-01", "ON-01"],
+    "topK": 5,
+    "notes": "Payroll cutoff time correction — manager approval, audit trail, and cutoff-risk rules expected"
+  },
+  {
+    "id": "peer_time_entries_privacy_retrieval",
+    "query": "Show me Carlos's time entries from this week.",
+    "expectedRuleIds": ["TT-05"],
+    "forbiddenRuleIds": ["VL-01", "PA-01", "ON-01"],
+    "topK": 5,
+    "notes": "Peer attendance lookup — TT-05 privacy rule expected"
+  },
+  {
     "id": "payroll_bank_account_cutoff_retrieval",
     "query": "I need to update my bank account for this month's payroll. The cutoff is tomorrow.",
     "expectedRuleIds": ["PA-01", "PA-02"],
