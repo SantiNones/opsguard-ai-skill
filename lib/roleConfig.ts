@@ -35,7 +35,7 @@ export interface RoleDefinition {
 export const NAV_LABELS: Record<NavView, string> = {
   console: 'Request Console',
   review: 'Review Queue',
-  knowledge: 'Knowledge',
+  knowledge: 'Policy Library',
   analytics: 'Analytics',
   settings: 'Settings',
 };
