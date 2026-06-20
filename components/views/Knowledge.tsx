@@ -113,13 +113,13 @@ export function Knowledge() {
 
   return (
     <>
-      <AppHeader title="Knowledge Base" subtitle="Policies and guides used to resolve requests." />
+      <AppHeader title="Policy Library" subtitle="Policies and rule IDs used to route requests safely." />
 
       <div className="flex-1 px-8 py-6 og-scroll overflow-y-auto">
         <div className="max-w-6xl">
           <div className="og-panel p-4 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-bold text-stone-950">Policy knowledge layer</p>
+              <p className="text-sm font-bold text-stone-950">Policy grounding layer</p>
               <p className="text-xs text-stone-500">Stable rule IDs feed retrieval, citations, and review packets.</p>
             </div>
             <div className="flex flex-wrap gap-2">

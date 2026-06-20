@@ -184,11 +184,16 @@ function formatDisplayLabel(value?: string): string {
     high: 'High',
     low: 'Low',
     restricted: 'Restricted',
-    time_correction: 'Time Correction',
-    draft_action: 'Draft Action',
-    restrict_access: 'Restrict Access',
-    review_required: 'Review Required',
-    access_restricted: 'Access Restricted',
+    time_correction: 'Time correction',
+    time_correction_cutoff: 'Time correction cutoff',
+    payroll_account_change: 'Payroll account change',
+    remote_work_abroad: 'Remote work abroad',
+    salary_access: 'Salary access',
+    employee_data_access: 'Employee data access',
+    draft_action: 'Draft action',
+    restrict_access: 'Restrict access',
+    review_required: 'Review required',
+    access_restricted: 'Access restricted',
   };
   return labelMap[value] ?? value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -340,7 +345,7 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
                     <th className="font-bold px-5 py-3.5">Request</th>
                     <th className="font-bold px-3 py-3.5">Risk</th>
                     <th className="font-bold px-3 py-3.5 hidden md:table-cell">Owner</th>
-                    <th className="font-bold px-3 py-3.5 hidden lg:table-cell">Type</th>
+                    <th className="font-bold px-3 py-3.5 hidden lg:table-cell max-w-36">Type</th>
                     <th className="font-bold px-3 py-3.5">Status</th>
                   </tr>
                 </thead>
@@ -353,9 +358,9 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
                         selectedId === c.id ? 'bg-brand-50/60 shadow-[inset_3px_0_0_#e11d48]' : 'hover:bg-[#fff7f5]'
                       }`}
                     >
-                      <td className="px-5 py-4">
-                        <p className="font-bold text-stone-950">{c.request}</p>
-                        <p className="text-xs text-stone-400">
+                      <td className="px-5 py-4 min-w-0">
+                        <p className="font-bold text-stone-950 break-words">{c.request}</p>
+                        <p className="text-xs text-stone-400 break-words">
                           {c.requester} · {c.time}
                           {c.source === 'created_from_request_console' && (
                             <span className="ml-2 text-brand-600 font-semibold">Created from console</span>
@@ -363,22 +368,24 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
                         </p>
                       </td>
                       <td className="px-3 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold ${riskStyles[c.risk]}`}>
+                        <span className={`inline-flex max-w-full items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-normal break-words ${riskStyles[c.risk]}`}>
                           <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
                           {c.risk === 'restricted' ? 'Restricted' : c.risk.charAt(0).toUpperCase() + c.risk.slice(1)}
                         </span>
                       </td>
-                      <td className="px-3 py-3.5 text-stone-600 hidden md:table-cell">
-                        <p className="font-semibold text-stone-700">{c.owner}</p>
+                      <td className="px-3 py-3.5 text-stone-600 hidden md:table-cell min-w-0">
+                        <p className="font-semibold text-stone-700 break-words">{c.owner}</p>
                         {c.ownerRole && (
-                          <p className="text-[11px] font-medium text-stone-400">
+                          <p className="text-[11px] font-medium text-stone-400 break-words">
                             {c.ownerRole}{c.ownerDepartment ? ` · ${c.ownerDepartment}` : ''}
                           </p>
                         )}
                       </td>
-                      <td className="px-3 py-3.5 text-stone-600 hidden lg:table-cell">{c.type}</td>
-                      <td className="px-3 py-3.5">
-                        <span className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-medium border ${statusStyles[c.status]}`}>
+                      <td className="px-3 py-3.5 text-stone-600 hidden lg:table-cell max-w-36 min-w-0">
+                        <span className="block max-w-full whitespace-normal break-words text-xs font-semibold text-stone-700 leading-snug">{formatDisplayLabel(c.type)}</span>
+                      </td>
+                      <td className="px-3 py-3.5 min-w-0">
+                        <span className={`inline-block max-w-full px-2 py-0.5 rounded-md text-[11px] font-medium border whitespace-normal break-words leading-snug ${statusStyles[c.status]}`}>
                           {statusLabels[c.status]}
                         </span>
                       </td>
@@ -399,28 +406,28 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
             {selected && (
               <div className="lg:col-span-4 og-card p-5 og-fade-up relative overflow-hidden">
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-400 via-brand-600 to-[#ff7a59]" />
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-mono text-stone-400">{selected.id}</span>
-                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium border ${statusStyles[selected.status]}`}>
+                <div className="flex items-start justify-between gap-3 mb-3 min-w-0">
+                  <span className="text-xs font-mono text-stone-400 break-words min-w-0">{selected.id}</span>
+                  <span className={`shrink-0 max-w-[60%] px-2 py-0.5 rounded-md text-[11px] font-medium border whitespace-normal break-words leading-snug ${statusStyles[selected.status]}`}>
                     {statusLabels[selected.status]}
                   </span>
                 </div>
-                <h3 className="text-lg font-black tracking-tight text-stone-950 mb-1">{selected.request}</h3>
-                <p className="text-xs text-stone-400 mb-4">{selected.requester} · {selected.time}</p>
-                <p className="text-sm text-stone-600 leading-relaxed mb-5 rounded-2xl bg-[#fff7f5] border border-[#eadeda] p-3">{selected.summary}</p>
-                <div className="grid grid-cols-2 gap-3 text-sm mb-5">
-                  <div className="rounded-xl bg-white/70 border border-[#eadeda] p-3">
+                <h3 className="text-lg font-black tracking-tight text-stone-950 mb-1 break-words">{selected.request}</h3>
+                <p className="text-xs text-stone-400 mb-4 break-words">{selected.requester} · {selected.time}</p>
+                <p className="text-sm text-stone-600 leading-relaxed mb-5 rounded-2xl bg-[#fff7f5] border border-[#eadeda] p-3 break-words">{selected.summary}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-5">
+                  <div className="rounded-xl bg-white/70 border border-[#eadeda] p-3 min-w-0">
                     <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Owner</p>
-                    <p className="text-stone-800 font-bold">{selected.owner}</p>
+                    <p className="text-stone-800 font-bold break-words">{selected.owner}</p>
                     {selected.ownerRole && (
-                      <p className="text-xs font-semibold text-stone-500 mt-0.5">
+                      <p className="text-xs font-semibold text-stone-500 mt-0.5 break-words">
                         {selected.ownerRole}{selected.ownerDepartment ? ` · ${selected.ownerDepartment}` : ''}
                       </p>
                     )}
                   </div>
-                  <div className="rounded-xl bg-white/70 border border-[#eadeda] p-3">
+                  <div className="rounded-xl bg-white/70 border border-[#eadeda] p-3 min-w-0">
                     <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Type</p>
-                    <p className="text-stone-800 font-bold">{selected.type}</p>
+                    <p className="text-stone-800 font-bold break-words leading-snug">{formatDisplayLabel(selected.type)}</p>
                   </div>
                 </div>
                 <button
@@ -490,19 +497,19 @@ export function ReviewQueue({ role, selectedActorId, createdCases, onResolveCrea
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="rounded-xl bg-white/75 border border-[#eadeda] p-3 min-w-0">
                     <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Case Type</p>
-                    <p className="text-sm font-bold text-stone-900">Time Correction</p>
+                    <p className="text-sm font-bold text-stone-900 break-words">Time correction</p>
                   </div>
                   <div className="rounded-xl bg-white/75 border border-[#eadeda] p-3 min-w-0">
                     <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Required Approval</p>
-                    <p className="text-sm font-bold text-stone-900">Direct Manager</p>
+                    <p className="text-sm font-bold text-stone-900 break-words">Direct Manager</p>
                   </div>
                   <div className="rounded-xl bg-white/75 border border-[#eadeda] p-3 min-w-0">
                     <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Payroll Impact</p>
-                    <p className="text-sm font-bold text-stone-900">Potential payroll-impacting correction</p>
+                    <p className="text-sm font-bold text-stone-900 break-words">Potential payroll-impacting correction</p>
                   </div>
                   <div className="rounded-xl bg-white/75 border border-[#eadeda] p-3 min-w-0">
                     <p className="text-[11px] text-stone-400 uppercase tracking-wide mb-0.5">Audit Requirement</p>
-                    <p className="text-sm font-bold text-stone-900">Original entry, corrected entry, approver, timestamp, and reason must be logged</p>
+                    <p className="text-sm font-bold text-stone-900 break-words">Original entry, corrected entry, approver, timestamp, and reason must be logged</p>
                   </div>
                 </div>
               )}
